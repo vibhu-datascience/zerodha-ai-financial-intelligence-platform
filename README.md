@@ -58,3 +58,28 @@ backend/
 │
 ├── .gitignore
 └── requirements.txt
+
+## Tech Stack
+
+### Backend
+- Python
+- FastAPI
+- Pydantic
+- Requests
+- yfinance
+- python-dotenv
+
+### Data & Analytics
+- Pandas
+- NumPy
+
+### Development
+- Git
+- GitHub
+- Uvicorn
+
+### Planned AI Layer
+- LLM
+- RAG
+- Vector Database
+- Agentic AI
