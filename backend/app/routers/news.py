@@ -9,5 +9,9 @@ news_service = NewsService()
 def get_news():
     return news_service.get_news()
 
+@router.get("/news/sentiment")
+def get_news_sentiment():
+    return news_service.get_overall_sentiment()
+
 
 
