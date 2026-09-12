@@ -3,11 +3,134 @@ from typing import Any
 
 from mcp.server import MCPServer
 
-from app.database.database import SessionLocal
-from app.database.models import Portfolio
+from app.database.database import Base, engine, SessionLocal
+from app.database.models import Portfolio, Holding
 from app.services.market_service import MarketService
 from app.services.portfolio_service import PortfolioService
 
+
+# =========================================================
+# DATABASE INITIALIZATION
+# =========================================================
+
+Base.metadata.create_all(bind=engine)
+
+
+def initialize_database():
+    db = SessionLocal()
+
+    try:
+        # Prevent duplicate seed data
+        if db.query(Portfolio).count() > 0:
+            print("MCP database already contains portfolio data.")
+            return
+
+        # -------------------------------------------------
+        # Growth Portfolio
+        # -------------------------------------------------
+
+        growth = Portfolio(
+            name="Growth Portfolio"
+        )
+
+        growth.holdings = [
+            Holding(
+                symbol="RELIANCE.NS",
+                quantity=20,
+                buy_price=2500,
+                sector="Energy"
+            ),
+            Holding(
+                symbol="TCS.NS",
+                quantity=10,
+                buy_price=3200,
+                sector="Information Technology"
+            ),
+            Holding(
+                symbol="INFY.NS",
+                quantity=15,
+                buy_price=1500,
+                sector="Information Technology"
+            )
+        ]
+
+        # -------------------------------------------------
+        # Balanced Portfolio
+        # -------------------------------------------------
+
+        balanced = Portfolio(
+            name="Balanced Portfolio"
+        )
+
+        balanced.holdings = [
+            Holding(
+                symbol="HDFCBANK.NS",
+                quantity=20,
+                buy_price=1600,
+                sector="Financial Services"
+            ),
+            Holding(
+                symbol="ITC.NS",
+                quantity=30,
+                buy_price=450,
+                sector="Consumer Staples"
+            ),
+            Holding(
+                symbol="TCS.NS",
+                quantity=10,
+                buy_price=3200,
+                sector="Information Technology"
+            )
+        ]
+
+        # -------------------------------------------------
+        # Conservative Portfolio
+        # -------------------------------------------------
+
+        conservative = Portfolio(
+            name="Conservative Portfolio"
+        )
+
+        conservative.holdings = [
+            Holding(
+                symbol="ITC.NS",
+                quantity=40,
+                buy_price=450,
+                sector="Consumer Staples"
+            ),
+            Holding(
+                symbol="HDFCBANK.NS",
+                quantity=15,
+                buy_price=1600,
+                sector="Financial Services"
+            )
+        ]
+
+        db.add_all([
+            growth,
+            balanced,
+            conservative
+        ])
+
+        db.commit()
+
+        print("MCP database initialized successfully.")
+
+    except Exception as e:
+        db.rollback()
+        print("MCP database initialization error:", e)
+
+    finally:
+        db.close()
+
+
+# Initialize database when MCP server starts
+initialize_database()
+
+
+# =========================================================
+# MCP SERVER
+# =========================================================
 
 mcp = MCPServer(
     "Zerodha AI Financial Intelligence MCP"
