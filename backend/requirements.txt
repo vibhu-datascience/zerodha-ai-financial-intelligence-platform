@@ -23,6 +23,7 @@ pydantic==2.13.4
 pydantic_core==2.46.4
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
+SQLAlchemy==2.0.52
 pytz==2026.3.post1
 requests==2.34.2
 six==1.17.0
