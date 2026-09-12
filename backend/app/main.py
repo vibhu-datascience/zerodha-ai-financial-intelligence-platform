@@ -1,11 +1,12 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth
 
+from app.routers import auth
 from app.routers import financial_insight
 from app.database.database import Base, engine
 from app.database import models
-
 from app.routers import portfolio
 from app.routers import market
 from app.routers import news
@@ -22,7 +23,10 @@ app = FastAPI(
 )
 
 
-# Create database tables
+# =====================================================
+# DATABASE
+# =====================================================
+
 Base.metadata.create_all(bind=engine)
 
 
@@ -30,18 +34,29 @@ Base.metadata.create_all(bind=engine)
 # CORS
 # =====================================================
 
+frontend_url = os.getenv("FRONTEND_URL")
+
+allowed_origins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5177",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:5177",
+]
+
+if frontend_url:
+    allowed_origins.append(frontend_url)
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # =====================================================
 # ROUTERS
@@ -72,8 +87,6 @@ app.include_router(stock.router)
 
 @app.get("/")
 def home():
-
     return {
-        "message":
-            "Welcome to Zerodha AI Financial Intelligence Platform!"
+        "message": "Welcome to Zerodha AI Financial Intelligence Platform!"
     }
