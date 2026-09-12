@@ -1,3 +1,4 @@
+import os
 from typing import Any
 
 from mcp.server import MCPServer
@@ -18,13 +19,9 @@ mcp = MCPServer(
 # =========================================================
 
 @mcp.tool()
-def get_portfolio(portfolio_name: str = "Growth Portfolio") -> dict[str, Any]:
-    """
-    Retrieve structured portfolio holdings and invested values.
-
-    This tool provides portfolio data to an AI workflow
-    without exposing direct database access to the LLM.
-    """
+def get_portfolio(
+    portfolio_name: str = "Growth Portfolio"
+) -> dict[str, Any]:
 
     db = SessionLocal()
 
@@ -42,7 +39,6 @@ def get_portfolio(portfolio_name: str = "Growth Portfolio") -> dict[str, Any]:
             }
 
         holdings = []
-
         total_invested = 0.0
 
         for holding in portfolio.holdings:
@@ -97,11 +93,6 @@ def get_portfolio(portfolio_name: str = "Growth Portfolio") -> dict[str, Any]:
 def get_market_analysis(
     symbol: str = "^NSEI"
 ) -> dict[str, Any]:
-    """
-    Retrieve deterministic market indicators for a symbol.
-
-    Includes trend, RSI, MACD, volatility and signal score.
-    """
 
     try:
 
@@ -133,12 +124,6 @@ def analyze_portfolio(
     portfolio_name: str = "Growth Portfolio",
     timeframe: str = "1Y"
 ) -> dict[str, Any]:
-    """
-    Run the existing portfolio analytics pipeline.
-
-    The tool delegates calculations to the existing
-    PortfolioService and AnalyticsService.
-    """
 
     db = SessionLocal()
 
@@ -177,12 +162,6 @@ def analyze_portfolio(
 def run_portfolio_analytics(
     portfolio_name: str = "Growth Portfolio"
 ) -> dict[str, Any]:
-    """
-    Run deterministic portfolio analytics.
-
-    This tool returns allocation, concentration,
-    sector exposure, volatility, drawdown and risk level.
-    """
 
     db = SessionLocal()
 
@@ -205,7 +184,6 @@ def run_portfolio_analytics(
             }
 
         holdings_data = []
-
         current_value = 0.0
 
         for holding in portfolio.holdings:
@@ -318,9 +296,16 @@ def run_portfolio_analytics(
 
 if __name__ == "__main__":
 
+    port = int(
+        os.getenv(
+            "PORT",
+            "8100"
+        )
+    )
+
     mcp.run(
         transport="streamable-http",
         host="0.0.0.0",
-        port=8100,
+        port=port,
         json_response=True
     )
