@@ -1,11 +1,28 @@
 # Zerodha AI Financial Intelligence Platform
 
-An AI-powered full-stack financial intelligence platform that combines portfolio analytics, market analysis, financial news, MCP-based tool access, agentic AI workflows, local LLM intelligence, and policy-validated recommendations.
+An AI-powered full-stack financial intelligence platform that combines portfolio analytics, market analysis, financial news, MCP-based governed tool access, LangGraph agentic AI workflows, Gemini-powered financial intelligence, and policy-validated recommendation cards.
 
 > This project is designed for financial intelligence and decision support. It does not provide direct buy, sell, or hold instructions.
 
+---
 
-## Project Overview
+## Live Deployment
+
+### Frontend
+https://zerodha-ai-financial-intelligence-p.vercel.app
+
+### Backend API
+https://zerodha-ai-financial-intelligence-net0.onrender.com
+
+### Backend Swagger Documentation
+https://zerodha-ai-financial-intelligence-net0.onrender.com/docs
+
+### MCP Server
+https://zerodha-ai-mcp.onrender.com/mcp
+
+---
+
+# Project Overview
 
 The Zerodha AI Financial Intelligence Platform helps users understand their portfolio and market environment through a structured financial intelligence pipeline.
 
@@ -16,21 +33,22 @@ The platform combines:
 - Financial news
 - Deterministic portfolio analytics
 - Technical market indicators
-- AI-powered financial intelligence
+- Gemini-powered AI financial intelligence
 - MCP-based governed tool access
 - LangGraph agentic workflow
-- Local LLM using Ollama
 - Evidence-based recommendation cards
 - Recommendation safety validation
-- Interactive React dashboard
+- React dashboard
 - Authentication
+- Persistent PostgreSQL database
 
 The goal is to transform raw financial data into structured, explainable and reviewable financial intelligence.
 
+---
 
-## Key Features
+# Key Features
 
-### Portfolio Analysis
+## Portfolio Analysis
 
 The platform provides:
 
@@ -40,14 +58,16 @@ The platform provides:
 - Overall return
 - Risk level
 - Holding-level performance
-- Best and worst performing holdings
+- Best-performing holdings
+- Worst-performing holdings
 - Portfolio composition
 - Portfolio areas to review
 
+---
 
-### Portfolio Analytics
+# Portfolio Analytics
 
-Deterministic analytics are calculated by the backend.
+Deterministic analytics are calculated by backend services.
 
 The analytics engine provides:
 
@@ -61,8 +81,11 @@ The analytics engine provides:
 
 These calculations are performed by backend services rather than relying on the LLM.
 
+The LLM receives the calculated financial evidence and primarily explains it.
 
-### Market Analysis
+---
+
+# Market Analysis
 
 Market intelligence includes:
 
@@ -78,8 +101,11 @@ Market intelligence includes:
 - Signal score
 - Overall technical signal
 
+The market indicators are calculated deterministically by the backend market-analysis service.
 
-### Financial News
+---
+
+# Financial News
 
 The platform displays financial news with:
 
@@ -87,20 +113,34 @@ The platform displays financial news with:
 - Source
 - Description
 - Publication time
-- Sentiment
+- Article sentiment
 - Overall sentiment
 - Positive news count
 - Negative news count
 - Neutral news count
+- Total articles analyzed
 
+News data is supplied to the financial intelligence workflow as structured context.
 
-## AI Financial Intelligence
+---
 
-The platform uses a local LLM through Ollama to generate financial intelligence from supplied financial data.
+# AI Financial Intelligence
 
-The AI receives structured and grounded context rather than directly accessing the database.
+The platform uses Google Gemini to generate grounded financial intelligence from structured portfolio, market and news data.
 
-The generated report covers:
+The AI does not directly access the database.
+
+Instead, the application:
+
+1. Fetches financial data
+2. Runs deterministic analytics
+3. Builds structured grounded context
+4. Passes the context to the Gemini model
+5. Generates financial intelligence
+6. Validates the generated report
+7. Displays the result on the dashboard
+
+The generated report covers areas such as:
 
 1. Current Market Condition
 2. Portfolio Performance
@@ -117,27 +157,26 @@ The AI is instructed to:
 - Avoid unsupported causation
 - Avoid direct buy recommendations
 - Avoid direct sell recommendations
-- Avoid hold recommendations
+- Avoid direct hold recommendations
 - Clearly distinguish observed data from interpretation
 
+---
 
-## AI Recommendations
+# AI Recommendations
 
 AI Recommendations are intentionally kept separate from the main AI Financial Intelligence section.
 
 The recommendation engine generates evidence-based areas for review using deterministic portfolio and market analytics.
 
-Example recommendation types include:
+Recommendation categories include:
 
-- Portfolio Concentration Review
-- Portfolio Volatility Review
-- Portfolio Drawdown Review
-- Sector Exposure Review
-- Portfolio Performance Review
-- Market Signal Monitoring
-- Portfolio Structure Insight
+- Diversification Review
+- Risk Alert
+- Watchlist Monitoring
+- Portfolio Follow-up
+- Educational Insight
 
-The system uses review-oriented language such as:
+Example review-oriented language includes:
 
 - Review
 - Monitor
@@ -145,14 +184,36 @@ The system uses review-oriented language such as:
 - Assess
 - Understand
 
-It does not intentionally generate direct:
+The system does not intentionally provide direct:
 
 - Buy instructions
 - Sell instructions
 - Hold instructions
 
+The purpose of the recommendation layer is decision support rather than personalized investment advice.
 
-## Recommendation Safety and Policy Validation
+---
+
+# Recommendation Cards
+
+Each recommendation card can contain:
+
+- Recommendation type
+- Category
+- Title
+- Severity
+- Rationale
+- Supporting metrics
+- Source
+- Freshness
+- Confidence
+- Suggested action/review
+
+This makes recommendations reviewable and traceable to the underlying financial evidence.
+
+---
+
+# Recommendation Safety and Policy Validation
 
 Every recommendation card passes through a policy validation layer before reaching the dashboard.
 
@@ -166,8 +227,10 @@ The policy validates:
 - Forbidden investment language
 - Direct investment actions
 - Guaranteed-return language
+- Risk-free claims
 - Unsupported market/portfolio relationships
 - Unsupported correlation claims
+- Unsupported causation claims
 
 Only approved recommendation cards are exposed to the frontend.
 
@@ -175,14 +238,15 @@ Example validation result:
 
 {
   "status": "passed",
-  "total_cards": 6,
-  "approved_cards": 6,
+  "total_cards": 5,
+  "approved_cards": 5,
   "blocked_count": 0,
   "errors": []
 }
 
+---
 
-## Agentic AI Workflow
+# Agentic AI Workflow
 
 The platform uses LangGraph to orchestrate the financial intelligence workflow.
 
@@ -217,18 +281,64 @@ backend/app/services/ai_workflow.py
 
 The workflow uses MCP tools to retrieve structured financial information.
 
+---
 
-## MCP Tool Layer
+# Grounded AI Architecture
 
-The platform uses the Model Context Protocol (MCP) as a governed tool layer between backend financial services and the AI workflow.
+The platform separates deterministic computation from AI interpretation.
 
-MCP server:
+Financial Data
+      |
+      v
+MCP Tools
+      |
+      v
+Deterministic Analytics
+      |
+      v
+Grounded Context
+      |
+      v
+Gemini LLM
+      |
+      v
+AI Financial Intelligence
+      |
+      v
+Validation
+      |
+      v
+Dashboard
 
-http://127.0.0.1:8100/mcp
+The LLM is not responsible for core financial calculations.
+
+For example, the backend calculates:
+
+- Portfolio value
+- Profit/Loss
+- Allocation
+- Volatility
+- Drawdown
+- Concentration
+- Risk level
+
+Gemini receives these results and produces a structured explanation.
+
+---
+
+# MCP Tool Layer
+
+The platform uses the Model Context Protocol (MCP) as a governed tool layer.
+
+The MCP server is deployed separately from the main FastAPI backend.
+
+Production MCP endpoint:
+
+https://zerodha-ai-mcp.onrender.com/mcp
 
 Available MCP tools:
 
-### 1. get_portfolio
+## 1. get_portfolio
 
 Retrieves:
 
@@ -239,7 +349,7 @@ Retrieves:
 - Invested value
 - Sector
 
-### 2. get_market_analysis
+## 2. get_market_analysis
 
 Retrieves deterministic market indicators including:
 
@@ -250,11 +360,11 @@ Retrieves deterministic market indicators including:
 - Signal score
 - Overall signal
 
-### 3. analyze_portfolio
+## 3. analyze_portfolio
 
 Runs the portfolio analysis pipeline.
 
-### 4. run_portfolio_analytics
+## 4. run_portfolio_analytics
 
 Runs deterministic portfolio analytics including:
 
@@ -265,8 +375,9 @@ Runs deterministic portfolio analytics including:
 - Drawdown
 - Risk level
 
+---
 
-## System Architecture
+# System Architecture
 
 React Dashboard
        |
@@ -295,7 +406,7 @@ Portfolio Service   Market Service    News Service
    Deterministic Analytics     Grounded AI Context
              |                         |
              |                         v
-             |                    Ollama LLM
+             |                    Gemini LLM
              |                         |
              +------------+------------+
                           |
@@ -309,8 +420,9 @@ Portfolio Service   Market Service    News Service
                           v
                    React Dashboard
 
+---
 
-## Backend Architecture
+# Backend Architecture
 
 The backend follows a modular architecture:
 
@@ -336,10 +448,61 @@ backend/app/services/
 - recommendation_service.py
 - recommendation_policy.py
 
+---
 
-## Frontend
+# Database
 
-The frontend is built using React and Vite.
+The production application uses PostgreSQL hosted on Neon.
+
+PostgreSQL is used for persistent application data including authentication and portfolio records.
+
+The database configuration is loaded through:
+
+DATABASE_URL
+
+The application supports SQLite as a local development fallback when DATABASE_URL is not configured.
+
+Production architecture:
+
+FastAPI
+   |
+   v
+SQLAlchemy
+   |
+   v
+Neon PostgreSQL
+
+---
+
+# Authentication
+
+The application includes an authentication flow.
+
+Users can:
+
+- Register
+- Login
+- Logout
+- Access protected financial intelligence endpoints
+
+After successful login, the frontend stores the access token and sends it to protected backend endpoints using:
+
+Authorization: Bearer <access_token>
+
+If the backend returns HTTP 401, the frontend clears the session and asks the user to log in again.
+
+Authentication data is stored in the persistent PostgreSQL database.
+
+---
+
+# Frontend
+
+The frontend is built using:
+
+- React
+- Vite
+- JavaScript
+- CSS
 
 The dashboard contains separate sections for:
 
@@ -362,58 +525,58 @@ The AI Recommendations section displays:
 - Source
 - Policy validation status
 
+---
 
-## Authentication
+# Technology Stack
 
-The application includes an authentication flow.
-
-After successful login, the frontend stores the access token and sends it to protected backend endpoints using:
-
-Authorization: Bearer <access_token>
-
-If the backend returns an HTTP 401 response, the frontend clears the session and asks the user to log in again.
-
-
-## Technology Stack
-
-### Frontend
+## Frontend
 
 - React
 - Vite
 - JavaScript
 - CSS
 
-### Backend
+## Backend
 
 - Python
 - FastAPI
 - SQLAlchemy
 - Pydantic
-- SQLite
 
-### AI
+## Database
 
-- Ollama
-- Llama 3.2
+- PostgreSQL
+- Neon
+
+## AI
+
+- Google Gemini
 - LangGraph
 
-### Agent / Tool Layer
+## Agent / Tool Layer
 
 - MCP Python SDK
 - Streamable HTTP
 
-### Financial Data
+## Financial Data
 
 - yfinance
-- Financial news service
+- Financial News API
 
-### Analytics
+## Analytics
 
 - Pandas
 - NumPy
 
+## Deployment
 
-## Project Structure
+- Vercel
+- Render
+- Neon PostgreSQL
+
+---
+
+# Project Structure
 
 zerodha-ai-financial-intelligence-platform/
 |
@@ -455,17 +618,18 @@ zerodha-ai-financial-intelligence-platform/
 │   │   ├── App.jsx
 │   │   ├── App.css
 │   │   └── Login.jsx
-│   │
+│   |
 │   ├── package.json
 │   └── ...
 │
 ├── README.md
 └── ...
 
+---
 
-## API Endpoints
+# API Endpoints
 
-### Health Check
+## Health Check
 
 GET /
 
@@ -475,8 +639,45 @@ Example response:
   "message": "Welcome to Zerodha AI Financial Intelligence Platform!"
 }
 
+---
 
-### Financial Intelligence
+## Authentication
+
+### Register
+
+POST /auth/register
+
+### Login
+
+POST /auth/login
+
+---
+
+## Portfolio
+
+GET /portfolio
+
+POST /portfolio-analysis
+
+---
+
+## Market
+
+GET /market
+
+GET /market/analysis
+
+---
+
+## Financial News
+
+GET /news
+
+GET /news/sentiment
+
+---
+
+## Financial Intelligence
 
 GET /financial-intelligence
 
@@ -507,32 +708,34 @@ Policy Validation
 +
 Workflow Validation
 
+---
 
-## Sample Portfolios
+# Sample Portfolios
 
-The development database contains three sample portfolios.
+The application contains three sample portfolios.
 
-### Growth Portfolio
+## Growth Portfolio
 
 - RELIANCE.NS
 - TCS.NS
 - INFY.NS
 
-### Balanced Portfolio
+## Balanced Portfolio
 
 - HDFCBANK.NS
 - ITC.NS
 - TCS.NS
 
-### Conservative Portfolio
+## Conservative Portfolio
 
 - ITC.NS
 - HDFCBANK.NS
 
-These portfolios are used to demonstrate the platform across different portfolio compositions.
+These portfolios demonstrate the platform across different portfolio compositions.
 
+---
 
-## Running the Backend
+# Running the Backend
 
 Navigate to the backend directory:
 
@@ -542,9 +745,11 @@ Activate the virtual environment:
 
 source venv/bin/activate
 
-Initialize the database:
+Install dependencies:
 
-python -m app.database.seed
+pip install -r requirements.txt
+
+For local development without PostgreSQL, the application can fall back to SQLite.
 
 Start FastAPI:
 
@@ -554,104 +759,109 @@ Backend:
 
 http://127.0.0.1:8000
 
+Swagger:
 
-## Running the MCP Server
+http://127.0.0.1:8000/docs
+
+---
+
+# Running the MCP Server Locally
 
 From the backend directory:
 
 python -m app.mcp.server
 
-MCP server:
+Local MCP endpoint:
 
 http://127.0.0.1:8100/mcp
 
 The MCP server can be tested using MCP Inspector.
 
+The production MCP server is separately deployed on Render.
 
-## Running Ollama
+---
 
-Make sure Ollama is running locally.
+# Gemini Configuration
 
-The default model is:
+The production AI provider is Google Gemini.
 
-llama3.2:3b
+The backend uses environment variables such as:
 
-The backend supports the following environment variables:
+AI_PROVIDER=gemini
+GEMINI_API_KEY=<your-api-key>
+GEMINI_MODEL=gemini-3.8-flash
+GEMINI_TIMEOUT=120
 
-- OLLAMA_URL
-- OLLAMA_MODEL
-- OLLAMA_TIMEOUT
+API keys must be stored as environment variables and must never be committed to GitHub.
 
-Example:
+---
 
-OLLAMA_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2:3b
-OLLAMA_TIMEOUT=120
+# Frontend Configuration
 
+The frontend uses the backend URL through:
 
-## Running the Frontend
+VITE_API_URL
 
-Navigate to the frontend:
+Production example:
 
-cd frontend
+VITE_API_URL=https://zerodha-ai-financial-intelligence-net0.onrender.com
 
-Install dependencies:
+The frontend is deployed through Vercel.
 
-npm install
+---
 
-Start the development server:
+# Testing
 
-npm run dev
+The deployed application has been tested across the main application flow.
 
-Frontend:
+## Authentication Testing
 
-http://localhost:5174
+Tested:
 
+- User registration
+- User login
+- Protected API access
+- Logout
+- Login persistence after backend restart
 
-## Testing
+## Database Testing
 
-The application has been tested across the sample portfolios.
+Tested:
 
-### Growth Portfolio
+- PostgreSQL connectivity
+- Persistent user data
+- Persistent portfolio data
+- Portfolio retrieval after service restart
 
-Portfolio: Growth Portfolio
-Workflow: passed
-Recommendations: 6
-Policy: passed
+## Financial Intelligence Testing
 
-### Balanced Portfolio
+Tested:
 
-Portfolio: Balanced Portfolio
-Workflow: passed
-Recommendations: 6
-Policy: passed
+- Portfolio retrieval
+- Market analysis
+- Deterministic portfolio analytics
+- Financial news retrieval
+- Gemini financial intelligence
+- Recommendation generation
+- Recommendation policy validation
+- LangGraph workflow execution
 
-### Conservative Portfolio
+## Production UI Testing
 
-Portfolio: Conservative Portfolio
-Workflow: passed
-Recommendations: 6
-Policy: passed
+Tested:
 
-The AI workflow validation returns:
+- Login → Dashboard
+- Dashboard automatic data loading
+- Refresh Analysis
+- Portfolio analytics
+- Financial news
+- AI Financial Intelligence
+- AI Recommendations
+- Logout → Login persistence
 
-{
-  "status": "passed",
-  "validation_errors": []
-}
+---
 
-Recommendation policy validation returns:
-
-{
-  "status": "passed",
-  "total_cards": 6,
-  "approved_cards": 6,
-  "blocked_count": 0,
-  "errors": []
-}
-
-
-## Validation Architecture
+# Validation Architecture
 
 The platform uses multiple validation layers.
 
@@ -664,7 +874,7 @@ Deterministic Analytics
 Grounded Context
       |
       v
-LLM Generated Intelligence
+Gemini Generated Intelligence
       |
       v
 AI Report Validation
@@ -684,8 +894,9 @@ Numerical analytics are generated by deterministic backend services.
 
 The LLM primarily explains the supplied evidence.
 
+---
 
-## Financial Safety
+# Financial Safety
 
 The platform is designed for financial intelligence and decision support.
 
@@ -697,11 +908,12 @@ HOLD
 
 It also attempts to prevent:
 
-- Guaranteed Returns
-- Risk-Free Claims
-- Unsupported Correlations
-- Unsupported Causation
-- Unsupported Financial Events
+- Guaranteed return claims
+- Risk-free claims
+- Unsupported correlations
+- Unsupported causation
+- Unsupported financial events
+- Direct investment actions
 
 Instead, recommendation cards focus on:
 
@@ -713,10 +925,11 @@ Instead, recommendation cards focus on:
 
 This allows the platform to surface potentially important areas without presenting them as personalized investment instructions.
 
+---
 
-## Design Principles
+# Design Principles
 
-### 1. Deterministic Analytics First
+## 1. Deterministic Analytics First
 
 Financial calculations are performed by backend services.
 
@@ -730,27 +943,31 @@ The LLM does not determine:
 - Concentration
 - Risk score
 
+---
 
-### 2. Grounded AI
+## 2. Grounded AI
 
 The AI receives structured data produced by the application.
 
 It is instructed not to invent information outside the supplied context.
 
+---
 
-### 3. Governed Tool Access
+## 3. Governed Tool Access
 
 MCP provides a structured tool layer for the AI workflow.
 
-The AI workflow interacts with defined tools instead of directly accessing the database.
+The workflow interacts with defined tools instead of allowing the LLM to directly access the database.
 
+---
 
-### 4. Policy-Controlled Recommendations
+## 4. Policy-Controlled Recommendations
 
 Recommendation cards are generated separately and validated before being shown to the user.
 
+---
 
-### 5. Separation of Intelligence and Recommendations
+## 5. Separation of Intelligence and Recommendations
 
 The platform intentionally keeps:
 
@@ -766,40 +983,46 @@ Financial Intelligence explains the available evidence.
 
 Recommendations identify evidence-based areas that may require review.
 
+---
 
-## Limitations
+# Limitations
 
-This project is currently a capstone/demo implementation.
+This project is a capstone/demo implementation.
 
-### Market Data
+## Market Data
 
 External financial data may be delayed, unavailable or subject to provider limitations.
 
-### Market Status
+## Market Status
 
 The current market-status implementation is simplified and should be replaced with production-grade exchange calendar and real-time market-status logic.
 
-### Risk Analytics
+## Risk Analytics
 
 The volatility and drawdown calculations are intended for portfolio intelligence and are not a complete institutional risk-management model.
 
-### AI
+## AI
 
 LLM-generated language can still be imperfect. The application therefore applies validation rules to reduce unsupported or unsafe outputs.
 
-### Recommendations
+## Recommendations
 
 Recommendations are designed as decision-support prompts and should not be interpreted as personalized investment advice.
 
+## Database
 
-## Future Improvements
+The production application uses Neon PostgreSQL for persistent storage.
+
+The database is external to the Render application filesystem, allowing authentication and portfolio data to survive Render service restarts and redeployments.
+
+---
+
+# Future Improvements
 
 Potential future improvements include:
 
-- Production cloud deployment
 - Real broker integration
-- User-specific portfolios
-- PostgreSQL
+- User-specific portfolio management
 - Redis caching
 - Background data refresh
 - Advanced portfolio risk models
@@ -811,75 +1034,94 @@ Potential future improvements include:
 - Human review workflows
 - Automated test suite
 - Role-based access control
-- Production-grade authentication
+- Production-grade authentication enhancements
+- Real-time market-status integration
 
+---
 
-## Demo Flow
+# Demo Flow
 
 Recommended product demonstration:
 
 1. Open the application
-        ↓
 2. Login
-        ↓
 3. Show Overall Market Outlook
-        ↓
 4. Show Market Analysis
-        ↓
 5. Show Portfolio Analysis
-        ↓
 6. Show Portfolio Analytics
-        ↓
 7. Show Financial News
-        ↓
 8. Show AI Financial Intelligence
-        ↓
 9. Show AI Recommendations
-        ↓
 10. Show Supporting Evidence
-        ↓
 11. Show Policy Validation
-        ↓
 12. Demonstrate another portfolio
-        ↓
 13. Explain MCP + LangGraph workflow
 
+---
 
-## Submission Highlights
+# Submission Highlights
 
 This project demonstrates:
 
 - Full-stack application development
 - FastAPI REST APIs
 - React frontend
-- SQLite database
+- PostgreSQL database
 - SQLAlchemy ORM
+- Persistent authentication
 - External financial data integration
 - Deterministic financial analytics
 - Technical market analysis
 - Financial news integration
-- Local LLM integration
-- Ollama
+- Gemini LLM integration
+- Grounded AI context
 - LangGraph agentic workflow
 - MCP tool integration
 - Structured AI output
 - Recommendation engine
 - Recommendation policy validation
-- Authentication
-- Multi-portfolio testing
 - Evidence-based decision support
+- Production deployment
+- Multi-portfolio analysis
 
+---
 
-## Deployment
+# Deployment Architecture
 
-Live application URL:
+USERS
+   |
+   v
+React / Vercel
+   |
+   v
+FastAPI / Render
+   |
+   +------------------+------------------+
+   |                  |                  |
+   v                  v                  v
+PostgreSQL          MCP Server       External APIs
+/ Neon              / Render         yfinance / News
+   |                  |
+   |                  v
+   |            LangGraph Workflow
+   |                  |
+   |                  v
+   |              Gemini LLM
+   |                  |
+   +------------------+
+                      |
+                      v
+              Recommendations
+                      |
+                      v
+              Policy Validation
+                      |
+                      v
+                 Dashboard
 
-[ADD DEPLOYED URL HERE]
+---
 
-Replace the placeholder with the deployed application URL after deployment.
-
-
-## Disclaimer
+# Disclaimer
 
 This project is intended for educational, analytical and demonstration purposes.
 
@@ -887,22 +1129,25 @@ The information and recommendations generated by this application should not be 
 
 Users should independently evaluate financial decisions and consult a qualified professional where appropriate.
 
+---
 
-## Conclusion
+# Conclusion
 
-The Zerodha AI Financial Intelligence Platform demonstrates how deterministic financial analytics, governed tool access, agentic AI workflows, local LLMs and policy validation can be combined to create a structured financial intelligence system.
+The Zerodha AI Financial Intelligence Platform demonstrates how deterministic financial analytics, persistent data storage, governed MCP tool access, agentic AI workflows, grounded Gemini intelligence and policy validation can be combined to create a structured financial intelligence system.
 
 The overall architecture is:
 
 Data
   ↓
-Analytics
+Deterministic Analytics
   ↓
 MCP Tools
   ↓
-Agentic Workflow
+LangGraph Agentic Workflow
   ↓
-AI Financial Intelligence
+Grounded Context
+  ↓
+Gemini AI Financial Intelligence
   ↓
 Recommendation Engine
   ↓
