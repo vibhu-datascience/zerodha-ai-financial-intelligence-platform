@@ -1,6 +1,9 @@
 import { useState } from "react";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  "http://127.0.0.1:8000"
+).replace(/\/$/, "");
 
 function Login({ onLogin }) {
   const [username, setUsername] = useState("");
@@ -51,14 +54,11 @@ function Login({ onLogin }) {
       onLogin(data.access_token);
 
     } catch (error) {
-
       setError(
         error.message ||
         "Unable to connect to the server."
       );
-
     } finally {
-
       setLoading(false);
     }
   };
