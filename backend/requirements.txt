@@ -25,6 +25,8 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
 SQLAlchemy==2.0.52
 python-jose==3.5.0
+passlib==1.7.4
+bcrypt==4.3.0
 pytz==2026.3.post1
 requests==2.34.2
 six==1.17.0
