@@ -6,6 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import auth
 from app.routers import financial_insight
 from app.database.database import Base, engine
+from app.database.seed import seed_database
+Base.metadata.create_all(bind=engine)
+seed_database()
 from app.database import models
 from app.routers import portfolio
 from app.routers import market
