@@ -1,7 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = "sqlite:///./zerodha_ai.db"
+import os
+
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./zerodha_ai.db")
 
 engine = create_engine(
     DATABASE_URL,
