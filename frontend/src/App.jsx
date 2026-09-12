@@ -2,9 +2,13 @@ import { useEffect, useState } from "react";
 import "./App.css";
 import Login from "./Login";
 
-const API_URL =
+const API_BASE_URL = (
   import.meta.env.VITE_API_URL ||
-  "http://127.0.0.1:8000/financial-intelligence";
+  "http://127.0.0.1:8000"
+).replace(/\/$/, "");
+
+const API_URL = `${API_BASE_URL}/financial-intelligence`;
+
 
 function App() {
   const [data, setData] = useState(null);
