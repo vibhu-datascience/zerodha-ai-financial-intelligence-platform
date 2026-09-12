@@ -1,5 +1,6 @@
 import asyncio
 import os
+import json
 from typing import Any, TypedDict
 
 from langgraph.graph import StateGraph, START, END
@@ -82,7 +83,6 @@ async def _call_mcp_tool(
     )
 
     if isinstance(structured, dict):
-
         return structured
 
     content = getattr(
@@ -105,8 +105,6 @@ async def _call_mcp_tool(
                 continue
 
             try:
-
-                import json
 
                 parsed = json.loads(text)
 
@@ -140,8 +138,7 @@ async def fetch_portfolio(
             client,
             "get_portfolio",
             {
-                "portfolio_name":
-                    portfolio_name
+                "portfolio_name": portfolio_name
             }
         )
 
@@ -171,8 +168,7 @@ async def run_analytics(
             client,
             "run_portfolio_analytics",
             {
-                "portfolio_name":
-                    portfolio_name
+                "portfolio_name": portfolio_name
             }
         )
 
@@ -242,10 +238,95 @@ def build_grounded_context(
         )
     )
 
+    # -----------------------------------------------------
+    # Build a complete portfolio analysis object.
+    #
+    # The analytics MCP tool returns:
+    # current_value, profit_loss and analytics.
+    #
+    # It does NOT return an "analysis" key.
+    # -----------------------------------------------------
+
+    portfolio_analysis = {
+        "portfolio_name": portfolio_data.get(
+            "portfolio_name",
+            state.get(
+                "portfolio_name",
+                "Portfolio"
+            )
+        ),
+
+        "total_value": _number(
+            portfolio_data.get(
+                "total_invested",
+                0
+            )
+        ),
+
+        "current_value": _number(
+            analytics_data.get(
+                "current_value",
+                0
+            )
+        ),
+
+        "profit_loss": _number(
+            analytics_data.get(
+                "profit_loss",
+                0
+            )
+        ),
+
+        "holdings": _safe_list(
+            portfolio_data.get(
+                "holdings",
+                []
+            )
+        ),
+
+        "analytics": _safe_dict(
+            analytics_data.get(
+                "analytics",
+                {}
+            )
+        )
+    }
+
+    # -----------------------------------------------------
+    # Calculate overall return
+    # -----------------------------------------------------
+
+    total_value = portfolio_analysis[
+        "total_value"
+    ]
+
+    profit_loss = portfolio_analysis[
+        "profit_loss"
+    ]
+
+    if total_value > 0:
+
+        return_percentage = (
+            profit_loss
+            / total_value
+            * 100
+        )
+
+    else:
+
+        return_percentage = 0.0
+
+    portfolio_analysis[
+        "overall_return"
+    ] = f"{return_percentage:+.2f}%"
+
     context = {
 
         "portfolio":
             portfolio_data,
+
+        "portfolio_analysis":
+            portfolio_analysis,
 
         "analytics":
             analytics_data,
@@ -278,16 +359,9 @@ def generate_ai_report(
         )
     )
 
-    portfolio_data = _safe_dict(
+    portfolio_analysis = _safe_dict(
         context.get(
-            "portfolio",
-            {}
-        )
-    )
-
-    analytics_data = _safe_dict(
-        context.get(
-            "analytics",
+            "portfolio_analysis",
             {}
         )
     )
@@ -305,19 +379,6 @@ def generate_ai_report(
             []
         )
     )
-
-    portfolio_analysis = (
-        analytics_data.get(
-            "analysis",
-            {}
-        )
-    )
-
-    if not isinstance(
-        portfolio_analysis,
-        dict
-    ):
-        portfolio_analysis = {}
 
     ai_service = AIService()
 
@@ -394,11 +455,9 @@ def build_safe_fallback_report(
         )
     )
 
-    portfolio_name = (
-        state.get(
-            "portfolio_name",
-            "Portfolio"
-        )
+    portfolio_name = state.get(
+        "portfolio_name",
+        "Portfolio"
     )
 
     invested = _number(
@@ -510,15 +569,12 @@ def build_safe_fallback_report(
         ).lower()
 
         if sentiment == "positive":
-
             positive_news += 1
 
         elif sentiment == "negative":
-
             negative_news += 1
 
         else:
-
             neutral_news += 1
 
     # -----------------------------------------------------
@@ -730,35 +786,20 @@ def validate_ai_report(
     forbidden_relationships = [
 
         "market caused the portfolio",
-
         "market movements caused the portfolio",
-
         "market conditions caused the portfolio",
-
         "portfolio declined because of the market",
-
         "portfolio increased because of the market",
-
         "portfolio performance was driven by market movements",
-
         "portfolio is sensitive to market movements",
-
         "portfolio was sensitive to market movements",
-
         "portfolio shows sensitivity to market movements",
-
         "portfolio has sensitivity to market movements",
-
         "indicating sensitivity to market movements",
-
         "some sensitivity to market movements",
-
         "sensitivity to market movements",
-
         "market movements drove portfolio performance",
-
         "market movements drove the portfolio",
-
         "market conditions drove portfolio performance"
     ]
 
@@ -779,15 +820,10 @@ def validate_ai_report(
     correlation_patterns = [
 
         "portfolio is correlated with the market",
-
         "portfolio is highly correlated with the market",
-
         "portfolio has a strong correlation with the market",
-
         "portfolio has a positive correlation with the market",
-
         "portfolio has a negative correlation with the market",
-
         "portfolio correlates with the market"
     ]
 
@@ -826,26 +862,16 @@ def validate_ai_report(
                 f"'{phrase}'"
             )
 
-    # -----------------------------------------------------
-    # RETURN
-    # -----------------------------------------------------
-
     if errors:
 
         return {
-            "validation_status":
-                "failed",
-
-            "validation_errors":
-                errors
+            "validation_status": "failed",
+            "validation_errors": errors
         }
 
     return {
-        "validation_status":
-            "passed",
-
-        "validation_errors":
-            []
+        "validation_status": "passed",
+        "validation_errors": []
     }
 
 
@@ -860,10 +886,6 @@ def validate_report_node(
     validation = validate_ai_report(
         state
     )
-
-    # -----------------------------------------------------
-    # AI REPORT PASSED
-    # -----------------------------------------------------
 
     if validation[
         "validation_status"
@@ -887,9 +909,6 @@ def validate_report_node(
     # -----------------------------------------------------
     # AI REPORT FAILED
     # -----------------------------------------------------
-    # Instead of exposing an invalid LLM response,
-    # create a deterministic grounded fallback.
-    # -----------------------------------------------------
 
     fallback_report = (
         build_safe_fallback_report(
@@ -911,10 +930,6 @@ def validate_report_node(
         )
     )
 
-    # -----------------------------------------------------
-    # FALLBACK PASSED
-    # -----------------------------------------------------
-
     if fallback_validation[
         "validation_status"
     ] == "passed":
@@ -930,10 +945,6 @@ def validate_report_node(
             "final_report":
                 fallback_report
         }
-
-    # -----------------------------------------------------
-    # EXTREME FAILURE
-    # -----------------------------------------------------
 
     return {
 
