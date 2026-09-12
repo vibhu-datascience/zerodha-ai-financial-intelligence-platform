@@ -29,6 +29,20 @@ function App() {
   };
 
   // =====================================================
+  // LOGOUT
+  // =====================================================
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("username");
+
+    setIsAuthenticated(false);
+    setData(null);
+    setError("");
+    setLoading(false);
+  };
+
+  // =====================================================
   // FETCH ANALYSIS
   // =====================================================
 
@@ -775,6 +789,13 @@ function App() {
             ↻ Try Again
           </button>
 
+          <button
+            onClick={handleLogout}
+            className="refresh-button logout-button"
+          >
+            Logout
+          </button>
+
         </div>
 
       </div>
@@ -900,17 +921,28 @@ function App() {
 
           </div>
 
-          <button
-            className="refresh-button"
-            onClick={() =>
-              fetchAnalysis(true)
-            }
-            disabled={refreshing}
-          >
-            {refreshing
-              ? "↻ Refreshing..."
-              : "↻ Refresh Analysis"}
-          </button>
+          <div className="header-actions">
+
+            <button
+              className="refresh-button"
+              onClick={() =>
+                fetchAnalysis(true)
+              }
+              disabled={refreshing}
+            >
+              {refreshing
+                ? "↻ Refreshing..."
+                : "↻ Refresh Analysis"}
+            </button>
+
+            <button
+              className="refresh-button logout-button"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+
+          </div>
 
         </header>
 

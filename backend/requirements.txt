@@ -34,3 +34,5 @@ urllib3==2.7.0
 uvicorn==0.52.1
 websockets==17.0.1
 yfinance==1.5.2
+langgraph==1.2.11
+mcp==2.2.0

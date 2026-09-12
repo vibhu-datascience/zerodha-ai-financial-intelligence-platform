@@ -1,4 +1,5 @@
 import asyncio
+import os
 from typing import Any, TypedDict
 
 from langgraph.graph import StateGraph, START, END
@@ -7,7 +8,10 @@ from mcp import Client
 from app.services.ai_service import AIService
 
 
-MCP_SERVER_URL = "http://127.0.0.1:8100/mcp"
+MCP_SERVER_URL = os.getenv(
+    "MCP_SERVER_URL",
+    "http://127.0.0.1:8100/mcp"
+)
 
 
 class FinancialWorkflowState(TypedDict, total=False):

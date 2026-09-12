@@ -15,42 +15,115 @@ class AIService:
 
     def __init__(self):
 
+        # Supported providers:
+        # - ollama
+        # - gemini
+        self.ai_provider = os.getenv(
+            "AI_PROVIDER",
+            "ollama"
+        ).lower()
+
+        # -------------------------------------------------
+        # OLLAMA CONFIGURATION
+        # -------------------------------------------------
+
         self.ollama_url = os.getenv(
             "OLLAMA_URL",
             "http://localhost:11434"
         )
 
-        self.model = os.getenv(
+        self.ollama_model = os.getenv(
             "OLLAMA_MODEL",
             "llama3.2:3b"
         )
 
-        self.timeout = int(
+        self.ollama_timeout = int(
             os.getenv(
                 "OLLAMA_TIMEOUT",
                 "120"
             )
         )
 
-        print("OLLAMA URL:", self.ollama_url)
-        print("OLLAMA MODEL:", self.model)
+        # -------------------------------------------------
+        # GEMINI CONFIGURATION
+        # -------------------------------------------------
+
+        self.gemini_api_key = os.getenv(
+            "GEMINI_API_KEY"
+        )
+
+        self.gemini_model = os.getenv(
+            "GEMINI_MODEL",
+            "gemini-3.8-flash"
+        )
+
+        self.gemini_timeout = int(
+            os.getenv(
+                "GEMINI_TIMEOUT",
+                "120"
+            )
+        )
+
+        # -------------------------------------------------
+        # LOG PROVIDER
+        # -------------------------------------------------
+
+        print(
+            "AI PROVIDER:",
+            self.ai_provider
+        )
+
+        if self.ai_provider == "gemini":
+
+            print(
+                "GEMINI MODEL:",
+                self.gemini_model
+            )
+
+        else:
+
+            print(
+                "OLLAMA URL:",
+                self.ollama_url
+            )
+
+            print(
+                "OLLAMA MODEL:",
+                self.ollama_model
+            )
 
     # =====================================================
-    # OLLAMA REQUEST
+    # AI REQUEST ROUTER
     # =====================================================
 
     def _ask_ollama(self, prompt):
+
+        if self.ai_provider == "gemini":
+
+            return self._ask_gemini(
+                prompt
+            )
+
+        return self._ask_local_ollama(
+            prompt
+        )
+
+    # =====================================================
+    # LOCAL OLLAMA REQUEST
+    # =====================================================
+
+    def _ask_local_ollama(self, prompt):
 
         try:
 
             response = requests.post(
                 f"{self.ollama_url}/api/generate",
                 json={
-                    "model": self.model,
+                    "model": self.ollama_model,
                     "prompt": prompt,
                     "stream": False
                 },
-                timeout=self.timeout
+                timeout=self.ollama_timeout
             )
 
             response.raise_for_status()
@@ -85,6 +158,121 @@ class AIService:
 
             print(
                 "OLLAMA ERROR:",
+                repr(e)
+            )
+
+            return None
+
+    # =====================================================
+    # GEMINI REQUEST
+    # =====================================================
+
+    def _ask_gemini(self, prompt):
+
+        if not self.gemini_api_key:
+
+            print(
+                "GEMINI API KEY is not configured."
+            )
+
+            return None
+
+        try:
+
+            url = (
+                "https://generativelanguage.googleapis.com/"
+                f"v1beta/models/"
+                f"{self.gemini_model}:generateContent"
+            )
+
+            headers = {
+                "x-goog-api-key":
+                    self.gemini_api_key,
+
+                "Content-Type":
+                    "application/json"
+            }
+
+            payload = {
+
+                "contents": [
+
+                    {
+                        "parts": [
+
+                            {
+                                "text": prompt
+                            }
+
+                        ]
+                    }
+
+                ]
+            }
+
+            response = requests.post(
+                url,
+                headers=headers,
+                json=payload,
+                timeout=self.gemini_timeout
+            )
+
+            response.raise_for_status()
+
+            data = response.json()
+
+            candidates = data.get(
+                "candidates",
+                []
+            )
+
+            if not candidates:
+
+                print(
+                    "Gemini returned no candidates."
+                )
+
+                return None
+
+            content = candidates[0].get(
+                "content",
+                {}
+            )
+
+            parts = content.get(
+                "parts",
+                []
+            )
+
+            result = "\n".join(
+                part.get("text", "")
+                for part in parts
+                if part.get("text")
+            ).strip()
+
+            if not result:
+
+                print(
+                    "Gemini returned an empty response."
+                )
+
+                return None
+
+            return result
+
+        except requests.exceptions.RequestException as e:
+
+            print(
+                "GEMINI REQUEST ERROR:",
+                repr(e)
+            )
+
+            return None
+
+        except Exception as e:
+
+            print(
+                "GEMINI ERROR:",
                 repr(e)
             )
 
