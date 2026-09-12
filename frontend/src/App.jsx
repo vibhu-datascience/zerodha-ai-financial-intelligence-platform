@@ -1743,7 +1743,7 @@ function App() {
               </h2>
 
               <span>
-                Powered by Ollama
+                Powered by Gemini
               </span>
 
             </div>
