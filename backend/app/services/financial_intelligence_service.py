@@ -441,26 +441,32 @@ class FinancialIntelligenceService:
                 self.ai_service
                 .generate_portfolio_insight(
 
-                    portfolio_name=
-                        portfolio_name,
+                    portfolio_analysis={
 
-                    total_value=
-                        total_invested,
+                        "portfolio_name":
+                            portfolio_name,
 
-                    current_value=
-                        current_value,
+                        "timeframe":
+                            timeframe,
 
-                    profit_loss=
-                        profit_loss,
+                        "total_value":
+                            total_invested,
 
-                    overall_return=
-                        overall_return,
+                        "current_value":
+                            current_value,
 
-                    risk_level=
-                        risk_level,
+                        "profit_loss":
+                            profit_loss,
 
-                    holdings_data=
-                        holdings_data
+                        "overall_return":
+                            overall_return,
+
+                        "risk_level":
+                            risk_level,
+
+                        "holdings":
+                            holdings_data
+                    }
                 )
             )
 
