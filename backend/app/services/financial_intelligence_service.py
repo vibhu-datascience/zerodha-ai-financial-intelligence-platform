@@ -306,7 +306,7 @@ class FinancialIntelligenceService:
         holdings_data = []
 
         workflow_holdings = (
-            portfolio_data.get(
+            analytics_data.get(
                 "holdings",
                 []
             )
@@ -320,115 +320,80 @@ class FinancialIntelligenceService:
             ):
                 continue
 
-            symbol = holding.get(
-                "symbol"
-            )
-
-            quantity = (
-                holding.get(
-                    "quantity",
-                    0
-                )
-            )
-
-            buy_price = (
-                holding.get(
-                    "buy_price",
-                    0
-                )
-            )
-
-            sector = holding.get(
-                "sector"
-            )
-
-            # ---------------------------------------------
-            # CURRENT PRICE
-            # ---------------------------------------------
-
-            try:
-
-                current_price = (
-                    self.market_service
-                    .get_current_price(
-                        symbol
-                    )
-                )
-
-            except Exception as e:
-
-                print(
-                    "[FINANCIAL INTELLIGENCE] "
-                    f"Price fetch error for {symbol}: {e}"
-                )
-
-                current_price = None
-
-            if current_price is None:
-
-                current_price = float(
-                    buy_price or 0
-                )
-
-            # ---------------------------------------------
-            # HOLDING VALUES
-            # ---------------------------------------------
-
-            invested_value = (
-                float(quantity)
-                * float(buy_price)
-            )
-
-            holding_current_value = (
-                float(quantity)
-                * float(current_price)
-            )
-
-            holding_profit_loss = (
-                holding_current_value
-                - invested_value
-            )
-
             holdings_data.append({
 
                 "symbol":
-                    symbol,
+                    holding.get(
+                        "symbol"
+                    ),
 
                 "quantity":
-                    float(quantity),
+                    float(
+                        holding.get(
+                            "quantity",
+                            0
+                        )
+                    ),
 
                 "buy_price":
                     round(
-                        float(buy_price),
+                        float(
+                            holding.get(
+                                "buy_price",
+                                0
+                            )
+                        ),
                         2
                     ),
 
                 "current_price":
                     round(
-                        float(current_price),
+                        float(
+                            holding.get(
+                                "current_price",
+                                0
+                            )
+                        ),
                         2
                     ),
 
                 "invested_value":
                     round(
-                        invested_value,
+                        float(
+                            holding.get(
+                                "invested_value",
+                                0
+                            )
+                        ),
                         2
                     ),
 
                 "current_value":
                     round(
-                        holding_current_value,
+                        float(
+                            holding.get(
+                                "current_value",
+                                0
+                            )
+                        ),
                         2
                     ),
 
                 "profit_loss":
                     round(
-                        holding_profit_loss,
+                        float(
+                            holding.get(
+                                "profit_loss",
+                                0
+                            )
+                        ),
                         2
                     ),
 
                 "sector":
-                    sector
+                    holding.get(
+                        "sector"
+                    )
             })
 
         # =================================================

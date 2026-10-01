@@ -617,6 +617,9 @@ def run_portfolio_analytics(
                     2
                 ),
 
+            "holdings":
+                holdings_data,
+
             "analytics":
                 analytics
         }
