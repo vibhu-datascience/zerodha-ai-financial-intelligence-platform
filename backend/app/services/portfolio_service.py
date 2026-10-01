@@ -1,5 +1,5 @@
 from app.services.market_service import MarketService
-from app.database.models import Portfolio
+from app.database.models import Portfolio, Holding
 from app.services.ai_service import AIService
 from app.services.analytics_service import AnalyticsService
 
@@ -7,17 +7,13 @@ from app.services.analytics_service import AnalyticsService
 class PortfolioService:
 
     def __init__(self, db):
-
         self.db = db
-
         self.market_service = MarketService()
-
         self.ai_service = AIService()
-
         self.analytics_service = AnalyticsService()
 
     # =====================================================
-    # CALCULATE PORTFOLIO DAY CHANGE
+    # DAY CHANGE
     # =====================================================
 
     def calculate_day_change(self, portfolio):
@@ -38,25 +34,20 @@ class PortfolioService:
                 continue
 
             current_price = price_data["current_price"]
-
             previous_price = price_data["previous_price"]
 
             current_value = (
-                holding.quantity
-                * current_price
+                holding.quantity * current_price
             )
 
             previous_value = (
-                holding.quantity
-                * previous_price
+                holding.quantity * previous_price
             )
 
             current_portfolio_value += current_value
-
             previous_portfolio_value += previous_value
 
         if previous_portfolio_value <= 0:
-
             return "0.00%"
 
         day_change = (
@@ -73,17 +64,14 @@ class PortfolioService:
     # GET PORTFOLIO
     # =====================================================
 
-    def get_portfolio(self):
+    def get_portfolio(self, user_id):
 
-        market = (
-            self.market_service
-            .get_market_status()
-        )
+        market = self.market_service.get_market_status()
 
         portfolio = (
             self.db.query(Portfolio)
             .filter(
-                Portfolio.name == "Growth Portfolio"
+                Portfolio.user_id == user_id
             )
             .first()
         )
@@ -91,52 +79,275 @@ class PortfolioService:
         if not portfolio:
 
             return {
-
-                "portfolio_name":
-                    "Growth Portfolio",
-
-                "total_value":
-                    0,
-
-                "day_change":
-                    "0.00%",
-
-                "market":
-                    market
+                "portfolio_name": "Growth Portfolio",
+                "total_value": 0,
+                "day_change": "0.00%",
+                "market": market
             }
 
         total_value = sum(
-
-            holding.quantity
-            * holding.buy_price
-
-            for holding
-            in portfolio.holdings
+            holding.quantity * holding.buy_price
+            for holding in portfolio.holdings
         )
 
-        day_change = (
-            self.calculate_day_change(
-                portfolio
-            )
+        day_change = self.calculate_day_change(
+            portfolio
         )
 
         return {
+            "portfolio_name": portfolio.name,
+            "total_value": round(
+                float(total_value),
+                2
+            ),
+            "day_change": day_change,
+            "market": market
+        }
 
-            "portfolio_name":
-                portfolio.name,
+    # =====================================================
+    # GET HOLDINGS
+    # =====================================================
 
-            "total_value":
-                round(
-                    float(total_value),
-                    2
+    def get_holdings(self, user_id):
+
+        portfolio = (
+            self.db.query(Portfolio)
+            .filter(
+                Portfolio.user_id == user_id
+            )
+            .first()
+        )
+
+        if not portfolio:
+            return []
+
+        holdings = (
+            self.db.query(Holding)
+            .filter(
+                Holding.portfolio_id == portfolio.id
+            )
+            .all()
+        )
+
+        return [
+
+            {
+                "id": holding.id,
+
+                "symbol": holding.symbol,
+
+                "quantity": float(
+                    holding.quantity
                 ),
 
-            "day_change":
-                day_change,
+                "buy_price": float(
+                    holding.buy_price
+                ),
 
-            "market":
-                market
+                "sector": holding.sector,
+
+                "invested_value": round(
+                    float(
+                        holding.quantity
+                        * holding.buy_price
+                    ),
+                    2
+                )
+            }
+
+            for holding in holdings
+        ]
+
+    # =====================================================
+    # ADD HOLDING
+    # =====================================================
+
+    def add_holding(
+        self,
+        user_id,
+        symbol,
+        quantity,
+        buy_price,
+        sector=None
+    ):
+
+        portfolio = (
+            self.db.query(Portfolio)
+            .filter(
+                Portfolio.user_id == user_id
+            )
+            .first()
+        )
+
+        if not portfolio:
+
+            portfolio = Portfolio(
+                user_id=user_id,
+                name="Growth Portfolio"
+            )
+
+            self.db.add(portfolio)
+            self.db.commit()
+            self.db.refresh(portfolio)
+
+        holding = Holding(
+
+            portfolio_id=portfolio.id,
+
+            symbol=symbol.upper().strip(),
+
+            quantity=quantity,
+
+            buy_price=buy_price,
+
+            sector=sector
+        )
+
+        self.db.add(holding)
+
+        self.db.commit()
+
+        self.db.refresh(holding)
+
+        return {
+
+            "id": holding.id,
+
+            "symbol": holding.symbol,
+
+            "quantity": float(
+                holding.quantity
+            ),
+
+            "buy_price": float(
+                holding.buy_price
+            ),
+
+            "sector": holding.sector,
+
+            "invested_value": round(
+                float(
+                    holding.quantity
+                    * holding.buy_price
+                ),
+                2
+            )
         }
+
+    # =====================================================
+    # UPDATE HOLDING
+    # =====================================================
+
+    def update_holding(
+        self,
+        user_id,
+        holding_id,
+        symbol,
+        quantity,
+        buy_price,
+        sector=None
+    ):
+
+        portfolio = (
+            self.db.query(Portfolio)
+            .filter(
+                Portfolio.user_id == user_id
+            )
+            .first()
+        )
+
+        if not portfolio:
+            return None
+
+        holding = (
+            self.db.query(Holding)
+            .filter(
+                Holding.id == holding_id,
+                Holding.portfolio_id == portfolio.id
+            )
+            .first()
+        )
+
+        if not holding:
+            return None
+
+        holding.symbol = (
+            symbol.upper().strip()
+        )
+
+        holding.quantity = quantity
+
+        holding.buy_price = buy_price
+
+        holding.sector = sector
+
+        self.db.commit()
+
+        self.db.refresh(holding)
+
+        return {
+
+            "id": holding.id,
+
+            "symbol": holding.symbol,
+
+            "quantity": float(
+                holding.quantity
+            ),
+
+            "buy_price": float(
+                holding.buy_price
+            ),
+
+            "sector": holding.sector,
+
+            "invested_value": round(
+                float(
+                    holding.quantity
+                    * holding.buy_price
+                ),
+                2
+            )
+        }
+
+    # =====================================================
+    # DELETE HOLDING
+    # =====================================================
+
+    def delete_holding(
+        self,
+        user_id,
+        holding_id
+    ):
+
+        portfolio = (
+            self.db.query(Portfolio)
+            .filter(
+                Portfolio.user_id == user_id
+            )
+            .first()
+        )
+
+        if not portfolio:
+            return False
+
+        holding = (
+            self.db.query(Holding)
+            .filter(
+                Holding.id == holding_id,
+                Holding.portfolio_id == portfolio.id
+            )
+            .first()
+        )
+
+        if not holding:
+            return False
+
+        self.db.delete(holding)
+
+        self.db.commit()
+
+        return True
 
     # =====================================================
     # PORTFOLIO ANALYSIS
@@ -145,17 +356,19 @@ class PortfolioService:
     def analyze_portfolio(
         self,
         portfolio_name,
-        timeframe
+        timeframe,
+        user_id
     ):
 
         # -------------------------------------------------
-        # GET PORTFOLIO
+        # GET USER'S PORTFOLIO
         # -------------------------------------------------
 
         portfolio = (
             self.db.query(Portfolio)
             .filter(
-                Portfolio.name == portfolio_name
+                Portfolio.name == portfolio_name,
+                Portfolio.user_id == user_id
             )
             .first()
         )
@@ -187,6 +400,9 @@ class PortfolioService:
 
                 "overall_return":
                     "0%",
+
+                "holdings":
+                    [],
 
                 "analytics":
                     {},
@@ -229,8 +445,8 @@ class PortfolioService:
                 )
             )
 
-            # Fallback to buy price if market
-            # data is unavailable
+            # If market price unavailable,
+            # use buy price as fallback.
 
             if current_price is None:
 
@@ -239,19 +455,16 @@ class PortfolioService:
                 )
 
             holding_invested_value = (
-
                 holding.quantity
                 * holding.buy_price
             )
 
             holding_current_value = (
-
                 holding.quantity
                 * current_price
             )
 
             holding_profit_loss = (
-
                 holding_current_value
                 - holding_invested_value
             )
@@ -327,10 +540,8 @@ class PortfolioService:
         if invested_value > 0:
 
             return_percentage = (
-
                 profit_loss
                 / invested_value
-
             ) * 100
 
         else:
@@ -435,18 +646,11 @@ class PortfolioService:
         # -------------------------------------------------
 
         analytics = (
-
             self.analytics_service
             .run_portfolio_analytics(
-
-                holdings_data=
-                    holdings_data,
-
-                current_value=
-                    current_value,
-
-                total_profit_loss=
-                    profit_loss
+                holdings_data=holdings_data,
+                current_value=current_value,
+                total_profit_loss=profit_loss
             )
         )
 
@@ -463,33 +667,23 @@ class PortfolioService:
         # -------------------------------------------------
 
         insight = (
-
             self.ai_service
             .generate_portfolio_insight(
+                portfolio_name=portfolio.name,
 
-                portfolio_name=
-                    portfolio.name,
+                total_value=invested_value,
 
-                total_value=
-                    invested_value,
+                current_value=current_value,
 
-                current_value=
-                    current_value,
+                profit_loss=profit_loss,
 
-                profit_loss=
-                    profit_loss,
+                overall_return=f"{return_percentage:+.2f}%",
 
-                overall_return=
-                    f"{return_percentage:+.2f}%",
+                risk_level=risk_level,
 
-                risk_level=
-                    risk_level,
+                holdings_data=holdings_data,
 
-                holdings_data=
-                    holdings_data,
-
-                performance_summary=
-                    performance_summary
+                performance_summary=performance_summary
             )
         )
 
@@ -531,6 +725,14 @@ class PortfolioService:
 
             "overall_return":
                 f"{return_percentage:+.2f}%",
+
+            # IMPORTANT:
+            # Holding-level current price,
+            # current value and P/L are returned
+            # to the AI workflow.
+
+            "holdings":
+                holdings_data,
 
             "analytics":
                 analytics,

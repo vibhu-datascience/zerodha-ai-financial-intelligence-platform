@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import Login from "./Login";
+import Holdings from "./Holdings";
+import Copilot from "./Copilot";
 
 const API_BASE_URL = (
   import.meta.env.VITE_API_URL ||
-  "http://127.0.0.1:8000"
+  "http://127.0.0.1:8001"
 ).replace(/\/$/, "");
 
 const API_URL = `${API_BASE_URL}/financial-intelligence`;
-
 
 function App() {
   const [data, setData] = useState(null);
@@ -16,15 +17,12 @@ function App() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
-  const [isAuthenticated, setIsAuthenticated] =
-    useState(
-      Boolean(
-        localStorage.getItem("access_token")
-      )
-    );
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    Boolean(localStorage.getItem("access_token"))
+  );
 
   // =====================================================
-  // LOGIN SUCCESS
+  // LOGIN
   // =====================================================
 
   const handleLogin = () => {
@@ -48,12 +46,10 @@ function App() {
   };
 
   // =====================================================
-  // FETCH ANALYSIS
+  // FETCH FINANCIAL INTELLIGENCE
   // =====================================================
 
-  const fetchAnalysis = async (
-    isRefresh = false
-  ) => {
+  const fetchAnalysis = async (isRefresh = false) => {
     try {
       if (!isAuthenticated) {
         return;
@@ -67,30 +63,19 @@ function App() {
 
       setError("");
 
-      const token =
-        localStorage.getItem(
-          "access_token"
-        );
+      const token = localStorage.getItem("access_token");
 
-      const response = await fetch(
-        API_URL,
-        {
-          headers: token
-            ? {
-                Authorization: `Bearer ${token}`,
-              }
-            : {},
-        }
-      );
+      const response = await fetch(API_URL, {
+        headers: token
+          ? {
+              Authorization: `Bearer ${token}`,
+            }
+          : {},
+      });
 
       if (response.status === 401) {
-        localStorage.removeItem(
-          "access_token"
-        );
-
-        localStorage.removeItem(
-          "username"
-        );
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("username");
 
         setIsAuthenticated(false);
         setData(null);
@@ -106,11 +91,9 @@ function App() {
         );
       }
 
-      const result =
-        await response.json();
+      const result = await response.json();
 
       setData(result);
-
     } catch (err) {
       console.error(err);
 
@@ -118,7 +101,6 @@ function App() {
         err.message ||
           "Unable to connect to the backend. Please make sure your FastAPI server is running."
       );
-
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -143,11 +125,7 @@ function App() {
   // =====================================================
 
   if (!isAuthenticated) {
-    return (
-      <Login
-        onLogin={handleLogin}
-      />
-    );
+    return <Login onLogin={handleLogin} />;
   }
 
   // =====================================================
@@ -169,16 +147,13 @@ function App() {
       return value;
     }
 
-    return new Intl.NumberFormat(
-      "en-IN",
-      {
-        style: "currency",
-        currency: "INR",
-        minimumFractionDigits:
-          number % 1 === 0 ? 0 : 1,
-        maximumFractionDigits: 2,
-      }
-    ).format(number);
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits:
+        number % 1 === 0 ? 0 : 1,
+      maximumFractionDigits: 2,
+    }).format(number);
   };
 
   // =====================================================
@@ -199,23 +174,17 @@ function App() {
       return value;
     }
 
-    return new Intl.NumberFormat(
-      "en-IN",
-      {
-        maximumFractionDigits: 2,
-      }
-    ).format(number);
+    return new Intl.NumberFormat("en-IN", {
+      maximumFractionDigits: 2,
+    }).format(number);
   };
 
   // =====================================================
   // SIGNAL CLASS
   // =====================================================
 
-  const getSignalClass = (
-    value = ""
-  ) => {
-    const text =
-      String(value).toLowerCase();
+  const getSignalClass = (value = "") => {
+    const text = String(value).toLowerCase();
 
     if (
       text.includes("bullish") ||
@@ -242,28 +211,21 @@ function App() {
   // DATE
   // =====================================================
 
-  const formatDate = (
-    dateString
-  ) => {
+  const formatDate = (dateString) => {
     if (!dateString) {
       return "";
     }
 
     try {
-      const date =
-        new Date(dateString);
+      const date = new Date(dateString);
 
-      return date.toLocaleString(
-        "en-IN",
-        {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-        }
-      );
-
+      return date.toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
     } catch {
       return dateString;
     }
@@ -274,7 +236,6 @@ function App() {
   // =====================================================
 
   const renderReport = (text) => {
-
     if (!text) {
       return (
         <p className="report-text">
@@ -285,12 +246,8 @@ function App() {
 
     const lines = String(text)
       .split("\n")
-      .map(
-        (line) => line.trim()
-      )
-      .filter(
-        (line) => line.length > 0
-      );
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
 
     const sectionHeadings = [
       "Portfolio Performance",
@@ -299,208 +256,153 @@ function App() {
       "Portfolio Composition",
       "Portfolio Risk Observations",
       "Areas to Review",
-
       "Overall Portfolio Performance",
       "Technical Overview",
       "News Overview",
       "Key Observations",
       "Risk Factors",
       "What to Monitor",
-
       "Current Market Condition",
       "Relationship Between Market and Portfolio",
       "Important Financial News Themes",
       "Key Risks or Areas to Monitor",
     ];
 
-    return lines.map(
-      (line, index) => {
+    return lines.map((line, index) => {
+      const cleanLine = line
+        .replace(/\*\*/g, "")
+        .replace(/^#+\s*/, "")
+        .trim();
 
-        const cleanLine = line
-          .replace(/\*\*/g, "")
-          .replace(/^#+\s*/, "")
-          .trim();
+      const normalizedHeading = cleanLine
+        .replace(/^\d+\.\s*/, "")
+        .replace(/:$/, "")
+        .trim();
 
-        const normalizedHeading =
-          cleanLine
-            .replace(
-              /^\d+\.\s*/,
-              ""
-            )
-            .replace(
-              /:$/,
-              ""
-            )
-            .trim();
+      if (
+        sectionHeadings.some(
+          (heading) =>
+            heading.toLowerCase() ===
+            normalizedHeading.toLowerCase()
+        )
+      ) {
+        return (
+          <div
+            className="report-section"
+            key={index}
+          >
+            <h3 className="report-heading">
+              {normalizedHeading}
+            </h3>
+          </div>
+        );
+      }
 
-        // -------------------------------------------------
-        // SECTION HEADING
-        // -------------------------------------------------
-
-        if (
-          sectionHeadings.some(
-            (heading) =>
-              heading.toLowerCase() ===
-              normalizedHeading.toLowerCase()
-          )
-        ) {
-          return (
-            <div
-              className="report-section"
-              key={index}
-            >
-              <h3 className="report-heading">
-                {normalizedHeading}
-              </h3>
-            </div>
-          );
-        }
-
-        // -------------------------------------------------
-        // NUMBERED SECTION HEADING
-        // -------------------------------------------------
-
-        if (
-          /^\d+\.\s+[A-Za-z]/.test(
-            cleanLine
-          ) &&
-          cleanLine.length < 100
-        ) {
-          return (
-            <div
-              className="report-section"
-              key={index}
-            >
-              <h3 className="report-heading">
-                {cleanLine}
-              </h3>
-            </div>
-          );
-        }
-
-        // -------------------------------------------------
-        // NUMBERED REVIEW ITEM
-        // -------------------------------------------------
-
-        if (
-          /^\d+\.\s+/.test(
-            cleanLine
-          )
-        ) {
-          const number =
-            cleanLine.match(
-              /^\d+/
-            )?.[0];
-
-          return (
-            <div
-              className="report-numbered-item"
-              key={index}
-            >
-              <span className="report-number">
-                {number}
-              </span>
-
-              <p>
-                {cleanLine.replace(
-                  /^\d+\.\s*/,
-                  ""
-                )}
-              </p>
-            </div>
-          );
-        }
-
-        // -------------------------------------------------
-        // BULLET
-        // -------------------------------------------------
-
-        if (
-          cleanLine.startsWith("- ")
-        ) {
-          return (
-            <div
-              className="report-bullet"
-              key={index}
-            >
-              <span className="bullet-dot">
-                •
-              </span>
-
-              <p>
-                {cleanLine.substring(2)}
-              </p>
-            </div>
-          );
-        }
-
-        // -------------------------------------------------
-        // REPORT TITLE
-        // -------------------------------------------------
-
-        const lowerLine =
-          cleanLine.toLowerCase();
-
-        if (
-          lowerLine.includes(
-            "financial intelligence report"
-          ) ||
-          lowerLine.includes(
-            "portfolio intelligence report"
-          ) ||
-          lowerLine.includes(
-            "stock intelligence report"
-          )
-        ) {
-          return (
-            <h2
-              className="report-title"
-              key={index}
-            >
+      if (
+        /^\d+\.\s+[A-Za-z]/.test(cleanLine) &&
+        cleanLine.length < 100
+      ) {
+        return (
+          <div
+            className="report-section"
+            key={index}
+          >
+            <h3 className="report-heading">
               {cleanLine}
-            </h2>
-          );
-        }
+            </h3>
+          </div>
+        );
+      }
 
-        // -------------------------------------------------
-        // NORMAL PARAGRAPH
-        // -------------------------------------------------
+      if (/^\d+\.\s+/.test(cleanLine)) {
+        const number =
+          cleanLine.match(/^\d+/)?.[0];
 
         return (
-          <p
-            className="report-text"
+          <div
+            className="report-numbered-item"
+            key={index}
+          >
+            <span className="report-number">
+              {number}
+            </span>
+
+            <p>
+              {cleanLine.replace(
+                /^\d+\.\s*/,
+                ""
+              )}
+            </p>
+          </div>
+        );
+      }
+
+      if (cleanLine.startsWith("- ")) {
+        return (
+          <div
+            className="report-bullet"
+            key={index}
+          >
+            <span className="bullet-dot">
+              •
+            </span>
+
+            <p>
+              {cleanLine.substring(2)}
+            </p>
+          </div>
+        );
+      }
+
+      const lowerLine =
+        cleanLine.toLowerCase();
+
+      if (
+        lowerLine.includes(
+          "financial intelligence report"
+        ) ||
+        lowerLine.includes(
+          "portfolio intelligence report"
+        ) ||
+        lowerLine.includes(
+          "stock intelligence report"
+        )
+      ) {
+        return (
+          <h2
+            className="report-title"
             key={index}
           >
             {cleanLine}
-          </p>
+          </h2>
         );
       }
-    );
+
+      return (
+        <p
+          className="report-text"
+          key={index}
+        >
+          {cleanLine}
+        </p>
+      );
+    });
   };
 
   // =====================================================
   // RECOMMENDATION ICON
   // =====================================================
 
-  const getRecommendationIcon = (
-    type
-  ) => {
-
+  const getRecommendationIcon = (type) => {
     const value =
-      String(
-        type || ""
-      ).toUpperCase();
+      String(type || "").toUpperCase();
 
-    if (
-      value.includes("RISK")
-    ) {
+    if (value.includes("RISK")) {
       return "⚠️";
     }
 
     if (
-      value.includes(
-        "DIVERSIFICATION"
-      )
+      value.includes("DIVERSIFICATION")
     ) {
       return "🧩";
     }
@@ -513,9 +415,7 @@ function App() {
     }
 
     if (
-      value.includes(
-        "PERFORMANCE"
-      )
+      value.includes("PERFORMANCE")
     ) {
       return "📊";
     }
@@ -530,7 +430,6 @@ function App() {
   const getRecommendationSeverityClass = (
     severity
   ) => {
-
     const value =
       String(
         severity || "INFO"
@@ -554,7 +453,6 @@ function App() {
   const RecommendationCard = ({
     recommendation,
   }) => {
-
     if (!recommendation) {
       return null;
     }
@@ -594,23 +492,18 @@ function App() {
           severity
         )}`}
       >
-
         <div className="recommendation-card-header">
 
           <div className="recommendation-heading">
 
             <span className="recommendation-icon">
-              {getRecommendationIcon(
-                type
-              )}
+              {getRecommendationIcon(type)}
             </span>
 
             <div>
 
               <span className="recommendation-type">
-                {String(
-                  type
-                ).replaceAll(
+                {String(type).replaceAll(
                   "_",
                   " "
                 )}
@@ -651,10 +544,7 @@ function App() {
 
         </div>
 
-        {Object.keys(
-          metrics
-        ).length > 0 && (
-
+        {Object.keys(metrics).length > 0 && (
           <div className="recommendation-evidence">
 
             <h4>
@@ -663,11 +553,8 @@ function App() {
 
             <div className="evidence-list">
 
-              {Object.entries(
-                metrics
-              ).map(
+              {Object.entries(metrics).map(
                 ([key, value]) => (
-
                   <div
                     className="evidence-row"
                     key={key}
@@ -691,7 +578,6 @@ function App() {
                     </strong>
 
                   </div>
-
                 )
               )}
 
@@ -717,14 +603,12 @@ function App() {
         <div className="recommendation-footer">
 
           {confidence !== null && (
-
             <span>
               Confidence:{" "}
               <strong>
                 {confidence}%
               </strong>
             </span>
-
           )}
 
           <span>
@@ -818,9 +702,7 @@ function App() {
     data.portfolio || {};
 
   const news =
-    Array.isArray(
-      data.news
-    )
+    Array.isArray(data.news)
       ? data.news
       : [];
 
@@ -828,8 +710,7 @@ function App() {
     data.sentiment || {};
 
   const financialIntelligence =
-    data.financial_intelligence ||
-    "";
+    data.financial_intelligence || "";
 
   const overallSignal =
     market.overall_signal ||
@@ -837,15 +718,57 @@ function App() {
     "Neutral";
 
   const marketSignalClass =
-    getSignalClass(
-      overallSignal
-    );
+    getSignalClass(overallSignal);
 
   const newsSignalClass =
     getSignalClass(
       sentiment.overall_sentiment ||
         "Neutral"
     );
+
+  // =====================================================
+  // PORTFOLIO INTELLIGENCE
+  // =====================================================
+  // IMPORTANT:
+  // Do NOT use portfolio.insight here because the
+  // /financial-intelligence endpoint can contain an
+  // outdated insight object with zero values.
+  //
+  // The endpoint's actual portfolio metrics are correct:
+  // total_value, current_value, profit_loss,
+  // overall_return and risk_level.
+  // =====================================================
+
+  const allocationForCount =
+    Array.isArray(
+      portfolio.analytics?.allocation
+    )
+      ? portfolio.analytics.allocation
+      : [];
+
+  const portfolioHoldingCount =
+    allocationForCount.length;
+
+  const portfolioInsight = `
+The ${
+    portfolio.portfolio_name ||
+    "portfolio"
+  } has an invested value of ${formatCurrency(
+    portfolio.total_value
+  )} and a current value of ${formatCurrency(
+    portfolio.current_value
+  )}. The current profit/loss is ${formatCurrency(
+    portfolio.profit_loss
+  )}, representing an overall return of ${
+    portfolio.overall_return ||
+    "0.00%"
+  }. The calculated portfolio risk level is ${
+    portfolio.risk_level ||
+    "Unknown"
+  }. The portfolio contains ${
+    portfolioHoldingCount
+  } holdings.
+`.trim();
 
   // =====================================================
   // RECOMMENDATIONS
@@ -1349,14 +1272,27 @@ function App() {
             </h3>
 
             <div className="report-box">
+
+              {/* FIXED:
+                  Uses the correct portfolio metrics
+                  from the API instead of portfolio.insight.
+              */}
+
               {renderReport(
-                portfolio.insight
+                portfolioInsight
               )}
+
             </div>
 
           </div>
 
         </section>
+
+        {/* =================================================
+            PORTFOLIO HOLDINGS
+        ================================================= */}
+
+        <Holdings />
 
         {/* =================================================
             PORTFOLIO ANALYTICS
@@ -1455,7 +1391,6 @@ function App() {
                 </div>
 
               </div>
-
             )}
 
             <div className="portfolio-grid">
@@ -1566,18 +1501,15 @@ function App() {
                         </strong>
 
                       </div>
-
                     )
                   )}
 
                 </div>
 
               </div>
-
             )}
 
           </section>
-
         )}
 
         {/* =================================================
@@ -1718,10 +1650,8 @@ function App() {
                     </div>
 
                   </article>
-
                 )
               )
-
             )}
 
           </div>
@@ -1755,12 +1685,20 @@ function App() {
           </div>
 
           <div className="report-box ai-report">
+
             {renderReport(
               financialIntelligence
             )}
+
           </div>
 
         </section>
+
+        {/* =================================================
+            AI FINANCIAL COPILOT
+        ================================================= */}
+
+        <Copilot />
 
         {/* =================================================
             AI RECOMMENDATIONS
@@ -1862,7 +1800,6 @@ function App() {
               )}
 
             </div>
-
           )}
 
           {(recommendationPolicy.total_cards !==
@@ -1914,7 +1851,6 @@ function App() {
               </div>
 
             </div>
-
           )}
 
         </section>
@@ -1933,6 +1869,7 @@ function App() {
             Market data • Portfolio analytics
             • Financial news • AI insights
             • Evidence-based recommendations
+            • AI Financial Copilot
           </p>
 
         </footer>
@@ -1969,6 +1906,5 @@ function MetricCard({
     </div>
   );
 }
-
 
 export default App;

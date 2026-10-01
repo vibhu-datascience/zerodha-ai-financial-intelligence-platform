@@ -5,6 +5,10 @@ from dotenv import load_dotenv
 from app.services.sentiment_service import SentimentService
 
 
+# =========================================================
+# LOAD ENV
+# =========================================================
+
 load_dotenv()
 
 
@@ -14,125 +18,154 @@ class NewsService:
 
         self.sentiment_service = SentimentService()
 
-        # =================================================
-        # STOCK SYMBOL → COMPANY NAME / ALIASES
-        # =================================================
+        # -------------------------------------------------
+        # STOCK SYMBOL → COMPANY ALIASES
+        # -------------------------------------------------
 
         self.stock_aliases = {
 
             "RELIANCE.NS": [
-                "reliance industries",
-                "reliance industries limited",
-                "reliance jio",
-                "reliance retail"
+                "Reliance Industries",
+                "Reliance Industries Limited",
+                "Reliance Jio",
+                "Reliance Retail"
             ],
 
             "TCS.NS": [
-                "tata consultancy services",
-                "tata consultancy",
-                "tcs"
+                "Tata Consultancy Services",
+                "Tata Consultancy",
+                "TCS"
             ],
 
             "INFY.NS": [
-                "infosys",
-                "infosys limited"
+                "Infosys",
+                "Infosys Limited"
             ],
 
             "HDFCBANK.NS": [
-                "hdfc bank",
-                "hdfc bank limited"
+                "HDFC Bank",
+                "HDFC Bank Limited"
             ],
 
             "ICICIBANK.NS": [
-                "icici bank",
-                "icici bank limited"
+                "ICICI Bank",
+                "ICICI Bank Limited"
             ],
 
             "SBIN.NS": [
-                "state bank of india",
-                "state bank",
-                "sbi"
+                "State Bank of India",
+                "State Bank",
+                "SBI"
             ],
 
             "BHARTIARTL.NS": [
-                "bharti airtel",
-                "bharti airtel limited",
-                "airtel india"
+                "Bharti Airtel",
+                "Bharti Airtel Limited",
+                "Airtel India"
             ],
 
             "ITC.NS": [
-                "itc limited",
-                "itc ltd"
+                "ITC Limited",
+                "ITC Ltd"
             ],
 
             "LT.NS": [
-                "larsen & toubro",
-                "larsen and toubro",
-                "larsen toubro"
+                "Larsen & Toubro",
+                "Larsen and Toubro",
+                "Larsen Toubro"
             ],
 
             "HINDUNILVR.NS": [
-                "hindustan unilever",
-                "hindustan unilever limited",
-                "hul"
+                "Hindustan Unilever",
+                "Hindustan Unilever Limited",
+                "HUL"
             ],
 
             "AXISBANK.NS": [
-                "axis bank",
-                "axis bank limited"
+                "Axis Bank",
+                "Axis Bank Limited"
             ],
 
             "KOTAKBANK.NS": [
-                "kotak mahindra bank",
-                "kotak mahindra",
-                "kotak bank"
+                "Kotak Mahindra Bank",
+                "Kotak Mahindra",
+                "Kotak Bank"
             ],
 
             "MARUTI.NS": [
-                "maruti suzuki",
-                "maruti suzuki india",
-                "maruti"
+                "Maruti Suzuki",
+                "Maruti Suzuki India",
+                "Maruti"
             ],
 
             "TATAMOTORS.NS": [
-                "tata motors",
-                "tata motors limited"
+                "Tata Motors",
+                "Tata Motors Limited"
             ],
 
             "SUNPHARMA.NS": [
-                "sun pharma",
-                "sun pharmaceutical",
-                "sun pharmaceutical industries"
+                "Sun Pharma",
+                "Sun Pharmaceutical",
+                "Sun Pharmaceutical Industries"
             ],
 
             "ADANIENT.NS": [
-                "adani enterprises",
-                "adani enterprises limited"
+                "Adani Enterprises",
+                "Adani Enterprises Limited"
             ],
 
             "ADANIPORTS.NS": [
-                "adani ports",
-                "adani ports and sez",
-                "adani ports and special economic zone"
+                "Adani Ports",
+                "Adani Ports and SEZ",
+                "Adani Ports and Special Economic Zone"
             ]
         }
 
-    # =====================================================
-    # SENTIMENT HELPER
-    # =====================================================
+    # =========================================================
+    # API KEY
+    # =========================================================
+
+    def _get_api_key(self):
+
+        api_key = os.getenv("NEWS_API_KEY")
+
+        if not api_key:
+            return None
+
+        api_key = api_key.strip()
+
+        if not api_key:
+            return None
+
+        return api_key
+
+    # =========================================================
+    # SENTIMENT
+    # =========================================================
 
     def analyze_sentiment(self, text):
 
         try:
 
-            result = self.sentiment_service.analyze(text)
+            result = self.sentiment_service.analyze(
+                text
+            )
 
-            return result
+            if isinstance(result, dict):
+
+                return result
+
+            return {
+                "sentiment": "Neutral",
+                "positive_score": 0,
+                "negative_score": 0
+            }
 
         except Exception as e:
 
             print(
-                f"Sentiment analysis error: {e}"
+                "Sentiment analysis error:",
+                str(e)
             )
 
             return {
@@ -141,30 +174,24 @@ class NewsService:
                 "negative_score": 0
             }
 
-    # =====================================================
-    # GET GENERAL FINANCIAL NEWS
-    # =====================================================
+    # =========================================================
+    # NEWSAPI REQUEST
+    # =========================================================
 
-    def get_news(self):
+    def _request_newsapi(
+        self,
+        query,
+        page_size=50
+    ):
 
-        print("INSIDE GET_NEWS")
-
-        api_key = os.getenv("NEWS_API_KEY")
+        api_key = self._get_api_key()
 
         if not api_key:
 
             return {
-                "error": "NEWS_API_KEY not found in .env file"
+                "success": False,
+                "error": "NEWS_API_KEY is missing."
             }
-
-        query = (
-            "(Nifty OR Sensex OR NSE OR BSE OR "
-            "\"Indian stock market\" OR \"Indian stocks\") "
-            "AND "
-            "(stock OR stocks OR market OR shares OR "
-            "equity OR equities OR trading OR investor OR "
-            "earnings OR results OR finance OR economy)"
-        )
 
         try:
 
@@ -174,7 +201,7 @@ class NewsService:
                     "q": query,
                     "language": "en",
                     "sortBy": "publishedAt",
-                    "pageSize": 50,
+                    "pageSize": page_size,
                     "apiKey": api_key
                 },
                 timeout=15
@@ -185,97 +212,307 @@ class NewsService:
                 response.status_code
             )
 
+            try:
+                data = response.json()
+
+            except Exception:
+
+                data = {}
+
             if response.status_code != 200:
 
-                try:
-                    details = response.json()
-                except Exception:
-                    details = response.text
-
                 return {
-                    "error": "Unable to fetch news",
+                    "success": False,
+                    "error": (
+                        data.get(
+                            "message",
+                            "NewsAPI request failed."
+                        )
+                        if isinstance(data, dict)
+                        else "NewsAPI request failed."
+                    ),
                     "status_code": response.status_code,
-                    "details": details
+                    "details": data
                 }
 
-            data = response.json()
+            if data.get("status") != "ok":
 
-            news_list = []
+                return {
+                    "success": False,
+                    "error": data.get(
+                        "message",
+                        "NewsAPI returned an error."
+                    ),
+                    "details": data
+                }
 
-            financial_keywords = [
+            return {
+                "success": True,
+                "articles": data.get(
+                    "articles",
+                    []
+                )
+            }
 
-                "nifty",
-                "sensex",
-                "nse",
-                "bse",
-                "stock",
-                "stocks",
-                "share",
-                "shares",
-                "equity",
-                "equities",
-                "market",
-                "trading",
-                "investor",
-                "investment",
-                "earnings",
-                "profit",
-                "loss",
-                "revenue",
-                "quarter",
-                "results",
-                "ipo",
-                "dividend",
-                "mutual fund",
-                "bank",
-                "banking",
-                "rbi",
-                "rupee",
-                "inflation",
-                "interest rate",
-                "economy",
-                "economic",
-                "finance",
-                "financial"
-            ]
+        except requests.exceptions.RequestException as e:
 
-            seen_urls = set()
+            print(
+                "NEWS NETWORK ERROR:",
+                str(e)
+            )
 
-            for article in data.get("articles", []):
+            return {
+                "success": False,
+                "error": (
+                    "Network error while fetching news."
+                ),
+                "details": str(e)
+            }
+
+        except Exception as e:
+
+            print(
+                "NEWS UNEXPECTED ERROR:",
+                str(e)
+            )
+
+            return {
+                "success": False,
+                "error": "Unexpected news error.",
+                "details": str(e)
+            }
+
+    # =========================================================
+    # GENERAL FINANCIAL NEWS
+    # =========================================================
+
+    def get_news(self):
+
+        print(
+            "INSIDE GET_NEWS"
+        )
+
+        query = (
+            '(Nifty OR Sensex OR NSE OR BSE OR '
+            '"Indian stock market" OR "Indian stocks" '
+            'OR Reliance OR TCS OR Infosys) '
+            'AND '
+            '(stock OR stocks OR market OR shares OR '
+            'equity OR equities OR trading OR investor OR '
+            'earnings OR results OR finance OR economy)'
+        )
+
+        result = self._request_newsapi(
+            query=query,
+            page_size=50
+        )
+
+        if not result.get("success"):
+
+            print(
+                "NEWS API ERROR:",
+                result.get("error")
+            )
+
+            return {
+                "error": result.get(
+                    "error",
+                    "Unable to fetch news."
+                ),
+                "status_code": result.get(
+                    "status_code"
+                ),
+                "details": result.get(
+                    "details"
+                )
+            }
+
+        articles = result.get(
+            "articles",
+            []
+        )
+
+        news_list = []
+        seen_urls = set()
+
+        financial_keywords = [
+
+            "nifty",
+            "sensex",
+            "nse",
+            "bse",
+            "stock",
+            "stocks",
+            "share",
+            "shares",
+            "equity",
+            "equities",
+            "market",
+            "trading",
+            "investor",
+            "investment",
+            "earnings",
+            "profit",
+            "loss",
+            "revenue",
+            "quarter",
+            "results",
+            "ipo",
+            "dividend",
+            "mutual fund",
+            "bank",
+            "banking",
+            "rbi",
+            "rupee",
+            "inflation",
+            "interest rate",
+            "economy",
+            "economic",
+            "finance",
+            "financial"
+        ]
+
+        # -----------------------------------------------------
+        # FIRST PASS
+        # Strict financial relevance
+        # -----------------------------------------------------
+
+        for article in articles:
+
+            title = (
+                article.get("title")
+                or ""
+            ).strip()
+
+            description = (
+                article.get("description")
+                or ""
+            ).strip()
+
+            article_url = (
+                article.get("url")
+                or ""
+            ).strip()
+
+            if not title:
+                continue
+
+            text = (
+                f"{title} {description}"
+            ).lower()
+
+            is_financial = any(
+                keyword in text
+                for keyword in financial_keywords
+            )
+
+            if not is_financial:
+                continue
+
+            if article_url and article_url in seen_urls:
+                continue
+
+            if article_url:
+                seen_urls.add(article_url)
+
+            sentiment = self.analyze_sentiment(
+                text
+            )
+
+            news_list.append({
+
+                "title": title,
+
+                "description": description,
+
+                "source": (
+                    article.get(
+                        "source",
+                        {}
+                    ).get("name")
+                    or "Unknown"
+                ),
+
+                "url": article_url,
+
+                "published_at": (
+                    article.get(
+                        "publishedAt"
+                    )
+                ),
+
+                "sentiment": (
+                    sentiment.get(
+                        "sentiment",
+                        "Neutral"
+                    )
+                ),
+
+                "positive_score": (
+                    sentiment.get(
+                        "positive_score",
+                        0
+                    )
+                ),
+
+                "negative_score": (
+                    sentiment.get(
+                        "negative_score",
+                        0
+                    )
+                )
+            })
+
+            if len(news_list) >= 10:
+                break
+
+        # -----------------------------------------------------
+        # FALLBACK
+        #
+        # If NewsAPI returned articles but our filter removed
+        # everything, show the returned financial-market
+        # articles instead of falsely displaying zero news.
+        # -----------------------------------------------------
+
+        if not news_list:
+
+            print(
+                "Financial filter returned 0 articles."
+            )
+
+            for article in articles:
 
                 title = (
                     article.get("title")
                     or ""
-                )
+                ).strip()
 
                 description = (
                     article.get("description")
                     or ""
-                )
+                ).strip()
 
                 article_url = (
                     article.get("url")
                     or ""
-                )
+                ).strip()
+
+                if not title:
+                    continue
+
+                if article_url and article_url in seen_urls:
+                    continue
+
+                if article_url:
+                    seen_urls.add(article_url)
 
                 text = (
                     f"{title} {description}"
                 ).lower()
 
-                is_financial = any(
-                    keyword in text
-                    for keyword in financial_keywords
+                sentiment = self.analyze_sentiment(
+                    text
                 )
-
-                if not is_financial:
-                    continue
-
-                if article_url in seen_urls:
-                    continue
-
-                seen_urls.add(article_url)
-
-                sentiment = self.analyze_sentiment(text)
 
                 news_list.append({
 
@@ -288,6 +525,7 @@ class NewsService:
                             "source",
                             {}
                         ).get("name")
+                        or "Unknown"
                     ),
 
                     "url": article_url,
@@ -323,46 +561,16 @@ class NewsService:
                 if len(news_list) >= 10:
                     break
 
-            print(
-                "Financial articles:",
-                len(news_list)
-            )
+        print(
+            "Financial articles:",
+            len(news_list)
+        )
 
-            return news_list
+        return news_list
 
-        except requests.exceptions.RequestException as e:
-
-            print(
-                "NEWS NETWORK ERROR:",
-                str(e)
-            )
-
-            return {
-                "error":
-                    "Network error while fetching news",
-
-                "details":
-                    str(e)
-            }
-
-        except Exception as e:
-
-            print(
-                "NEWS UNEXPECTED ERROR:",
-                str(e)
-            )
-
-            return {
-                "error":
-                    "Unexpected error",
-
-                "details":
-                    str(e)
-            }
-
-    # =====================================================
-    # CHECK STOCK RELEVANCE
-    # =====================================================
+    # =========================================================
+    # FIND COMPANY ALIAS
+    # =========================================================
 
     def _find_matching_alias(
         self,
@@ -371,13 +579,17 @@ class NewsService:
         aliases
     ):
 
-        title_lower = title.lower()
-        description_lower = description.lower()
+        title_lower = (
+            title or ""
+        ).lower()
 
-        # =================================================
-        # 1. FIRST PRIORITY:
-        # COMPANY NAME IN TITLE
-        # =================================================
+        description_lower = (
+            description or ""
+        ).lower()
+
+        # -----------------------------------------------------
+        # TITLE
+        # -----------------------------------------------------
 
         for alias in aliases:
 
@@ -387,13 +599,9 @@ class NewsService:
 
                 return alias
 
-        # =================================================
-        # 2. SECOND PRIORITY:
-        # COMPANY NAME IN DESCRIPTION
-        #
-        # Only allow aliases longer than 4 characters.
-        # This prevents very generic words from matching.
-        # =================================================
+        # -----------------------------------------------------
+        # DESCRIPTION
+        # -----------------------------------------------------
 
         for alias in aliases:
 
@@ -408,9 +616,9 @@ class NewsService:
 
         return None
 
-    # =====================================================
-    # GET STOCK-SPECIFIC NEWS
-    # =====================================================
+    # =========================================================
+    # STOCK NEWS
+    # =========================================================
 
     def get_stock_news(
         self,
@@ -422,26 +630,13 @@ class NewsService:
             symbol
         )
 
-        api_key = os.getenv("NEWS_API_KEY")
+        symbol = (
+            symbol or ""
+        ).upper().strip()
 
-        if not api_key:
-
-            return {
-                "error":
-                    "NEWS_API_KEY not found in .env file"
-            }
-
-        symbol = symbol.upper().strip()
-
-        # =================================================
-        # GET COMPANY ALIASES
-        # =================================================
-
-        aliases = self.stock_aliases.get(symbol)
-
-        # =================================================
-        # FALLBACK FOR UNKNOWN STOCK
-        # =================================================
+        aliases = self.stock_aliases.get(
+            symbol
+        )
 
         if not aliases:
 
@@ -450,27 +645,15 @@ class NewsService:
                 .replace(".NS", "")
                 .replace(".BO", "")
                 .strip()
-                .lower()
             )
 
             aliases = [
                 clean_symbol
             ]
 
-        # =================================================
-        # BUILD NEWSAPI QUERY
-        # =================================================
-
-        query_parts = []
-
-        for alias in aliases:
-
-            query_parts.append(
-                f'"{alias}"'
-            )
-
         query = " OR ".join(
-            query_parts
+            f'"{alias}"'
+            for alias in aliases
         )
 
         print(
@@ -478,211 +661,139 @@ class NewsService:
             query
         )
 
-        try:
+        result = self._request_newsapi(
+            query=query,
+            page_size=50
+        )
 
-            response = requests.get(
-                "https://newsapi.org/v2/everything",
-                params={
-                    "q": query,
-                    "language": "en",
-                    "sortBy": "publishedAt",
-                    "pageSize": 50,
-                    "apiKey": api_key
-                },
-                timeout=15
-            )
-
-            print(
-                "STOCK NEWS API STATUS:",
-                response.status_code
-            )
-
-            if response.status_code != 200:
-
-                try:
-                    details = response.json()
-                except Exception:
-                    details = response.text
-
-                return {
-                    "error":
-                        "Unable to fetch stock news",
-
-                    "status_code":
-                        response.status_code,
-
-                    "details":
-                        details
-                }
-
-            data = response.json()
-
-            news_list = []
-
-            seen_urls = set()
-
-            # =================================================
-            # STRICT RELEVANCE CHECK
-            # =================================================
-
-            for article in data.get(
-                "articles",
-                []
-            ):
-
-                title = (
-                    article.get("title")
-                    or ""
-                )
-
-                description = (
-                    article.get("description")
-                    or ""
-                )
-
-                article_url = (
-                    article.get("url")
-                    or ""
-                )
-
-                # =================================================
-                # FIND ACTUAL COMPANY MATCH
-                # =================================================
-
-                matched_alias = (
-                    self._find_matching_alias(
-                        title,
-                        description,
-                        aliases
-                    )
-                )
-
-                # =================================================
-                # IGNORE UNRELATED ARTICLE
-                # =================================================
-
-                if matched_alias is None:
-
-                    continue
-
-                # =================================================
-                # REMOVE DUPLICATES
-                # =================================================
-
-                if article_url in seen_urls:
-
-                    continue
-
-                seen_urls.add(
-                    article_url
-                )
-
-                # =================================================
-                # SENTIMENT
-                # =================================================
-
-                text = (
-                    f"{title} {description}"
-                )
-
-                sentiment = (
-                    self.analyze_sentiment(
-                        text
-                    )
-                )
-
-                news_list.append({
-
-                    "title":
-                        title,
-
-                    "description":
-                        description,
-
-                    "source":
-                        article.get(
-                            "source",
-                            {}
-                        ).get("name"),
-
-                    "url":
-                        article_url,
-
-                    "published_at":
-                        article.get(
-                            "publishedAt"
-                        ),
-
-                    "matched_company":
-                        matched_alias,
-
-                    "sentiment":
-                        sentiment.get(
-                            "sentiment",
-                            "Neutral"
-                        ),
-
-                    "positive_score":
-                        sentiment.get(
-                            "positive_score",
-                            0
-                        ),
-
-                    "negative_score":
-                        sentiment.get(
-                            "negative_score",
-                            0
-                        )
-                })
-
-                # =================================================
-                # MAX 10 STOCK NEWS
-                # =================================================
-
-                if len(news_list) >= 10:
-
-                    break
-
-            print(
-                f"{symbol} relevant articles:",
-                len(news_list)
-            )
-
-            return news_list
-
-        except requests.exceptions.RequestException as e:
-
-            print(
-                f"{symbol} NEWS NETWORK ERROR:",
-                str(e)
-            )
+        if not result.get("success"):
 
             return {
-                "error":
-                    "Network error while fetching stock news",
-
-                "details":
-                    str(e)
+                "error": result.get(
+                    "error",
+                    "Unable to fetch stock news."
+                ),
+                "status_code": result.get(
+                    "status_code"
+                ),
+                "details": result.get(
+                    "details"
+                )
             }
 
-        except Exception as e:
+        articles = result.get(
+            "articles",
+            []
+        )
 
-            print(
-                f"{symbol} NEWS UNEXPECTED ERROR:",
-                str(e)
+        news_list = []
+        seen_urls = set()
+
+        for article in articles:
+
+            title = (
+                article.get("title")
+                or ""
+            ).strip()
+
+            description = (
+                article.get("description")
+                or ""
+            ).strip()
+
+            article_url = (
+                article.get("url")
+                or ""
+            ).strip()
+
+            if not title:
+                continue
+
+            matched_alias = (
+                self._find_matching_alias(
+                    title,
+                    description,
+                    aliases
+                )
             )
 
-            return {
-                "error":
-                    "Unexpected error while fetching stock news",
+            if matched_alias is None:
+                continue
 
-                "details":
-                    str(e)
-            }
+            if article_url and article_url in seen_urls:
+                continue
 
-    # =====================================================
-    # OVERALL NEWS SENTIMENT
-    # =====================================================
+            if article_url:
+                seen_urls.add(article_url)
+
+            text = (
+                f"{title} {description}"
+            )
+
+            sentiment = self.analyze_sentiment(
+                text
+            )
+
+            news_list.append({
+
+                "title": title,
+
+                "description": description,
+
+                "source": (
+                    article.get(
+                        "source",
+                        {}
+                    ).get("name")
+                    or "Unknown"
+                ),
+
+                "url": article_url,
+
+                "published_at": (
+                    article.get(
+                        "publishedAt"
+                    )
+                ),
+
+                "matched_company":
+                    matched_alias,
+
+                "sentiment": (
+                    sentiment.get(
+                        "sentiment",
+                        "Neutral"
+                    )
+                ),
+
+                "positive_score": (
+                    sentiment.get(
+                        "positive_score",
+                        0
+                    )
+                ),
+
+                "negative_score": (
+                    sentiment.get(
+                        "negative_score",
+                        0
+                    )
+                )
+            })
+
+            if len(news_list) >= 10:
+                break
+
+        print(
+            f"{symbol} relevant articles:",
+            len(news_list)
+        )
+
+        return news_list
+
+    # =========================================================
+    # OVERALL SENTIMENT
+    # =========================================================
 
     def get_overall_sentiment(self):
 
@@ -691,10 +802,6 @@ class NewsService:
         )
 
         news = self.get_news()
-
-        # =================================================
-        # ERROR HANDLING
-        # =================================================
 
         if isinstance(news, dict):
 
@@ -716,16 +823,11 @@ class NewsService:
                     0,
 
                 "message":
-                    "Unable to analyze market "
-                    "news sentiment.",
+                    "Unable to analyze market news sentiment.",
 
                 "error":
                     news
             }
-
-        # =================================================
-        # NO NEWS
-        # =================================================
 
         if not news:
 
@@ -747,13 +849,8 @@ class NewsService:
                     0,
 
                 "message":
-                    "No news available for "
-                    "sentiment analysis."
+                    "No news available for sentiment analysis."
             }
-
-        # =================================================
-        # COUNT SENTIMENT
-        # =================================================
 
         positive_count = 0
         negative_count = 0
@@ -761,26 +858,24 @@ class NewsService:
 
         for article in news:
 
-            sentiment = article.get(
-                "sentiment",
-                "Neutral"
-            )
+            sentiment = str(
+                article.get(
+                    "sentiment",
+                    "Neutral"
+                )
+            ).lower()
 
-            if sentiment == "Positive":
+            if sentiment == "positive":
 
                 positive_count += 1
 
-            elif sentiment == "Negative":
+            elif sentiment == "negative":
 
                 negative_count += 1
 
             else:
 
                 neutral_count += 1
-
-        # =================================================
-        # DETERMINE OVERALL SENTIMENT
-        # =================================================
 
         if positive_count > negative_count:
 
@@ -793,10 +888,6 @@ class NewsService:
         else:
 
             overall_sentiment = "Neutral"
-
-        # =================================================
-        # FINAL RESPONSE
-        # =================================================
 
         return {
 
@@ -816,11 +907,5 @@ class NewsService:
                 len(news),
 
             "message":
-                (
-                    f"Market news sentiment is "
-                    f"{overall_sentiment.lower()} "
-                    f"based on the latest "
-                    f"{len(news)} financial news "
-                    f"articles."
-                )
+                "News sentiment analyzed successfully."
         }

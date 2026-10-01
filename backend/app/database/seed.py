@@ -1,41 +1,88 @@
-from app.database.database import SessionLocal, engine, Base
-from app.database.models import Portfolio, Holding
+from app.database.database import SessionLocal
+from app.database.models import User, Portfolio, Holding
+from app.services.auth_service import AuthService
 
 
 def seed_database():
-
-    Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
 
     try:
 
-        # Prevent duplicate data
-        if db.query(Portfolio).count() > 0:
-            print("Database already contains portfolio data.")
+        # -------------------------------------------------
+        # GET OR CREATE DEMO USER
+        # -------------------------------------------------
+
+        demo_user = (
+            db.query(User)
+            .filter(
+                User.username == "demo_user1"
+            )
+            .first()
+        )
+
+        if not demo_user:
+
+            auth_service = AuthService()
+
+            demo_user = User(
+                username="demo_user1",
+                password_hash=auth_service.hash_password(
+                    "Demo@12345"
+                )
+            )
+
+            db.add(demo_user)
+            db.commit()
+            db.refresh(demo_user)
+
+            print("Demo user created.")
+
+        # -------------------------------------------------
+        # GET OR CREATE GROWTH PORTFOLIO
+        # -------------------------------------------------
+
+        growth = (
+            db.query(Portfolio)
+            .filter(
+                Portfolio.user_id == demo_user.id
+            )
+            .first()
+        )
+
+        if growth:
+
+            print(
+                "Database already contains portfolio data."
+            )
+
             return
 
-        # -------------------------
-        # Growth Portfolio
-        # -------------------------
+        # -------------------------------------------------
+        # CREATE GROWTH PORTFOLIO
+        # -------------------------------------------------
 
         growth = Portfolio(
+            user_id=demo_user.id,
             name="Growth Portfolio"
         )
 
         growth.holdings = [
+
             Holding(
                 symbol="RELIANCE.NS",
                 quantity=20,
                 buy_price=2500,
                 sector="Energy"
             ),
+
             Holding(
                 symbol="TCS.NS",
                 quantity=10,
                 buy_price=3200,
                 sector="Information Technology"
             ),
+
             Holding(
                 symbol="INFY.NS",
                 quantity=15,
@@ -44,73 +91,22 @@ def seed_database():
             )
         ]
 
-        # -------------------------
-        # Balanced Portfolio
-        # -------------------------
-
-        balanced = Portfolio(
-            name="Balanced Portfolio"
-        )
-
-        balanced.holdings = [
-            Holding(
-                symbol="HDFCBANK.NS",
-                quantity=20,
-                buy_price=1600,
-                sector="Financial Services"
-            ),
-            Holding(
-                symbol="ITC.NS",
-                quantity=30,
-                buy_price=450,
-                sector="Consumer Staples"
-            ),
-            Holding(
-                symbol="TCS.NS",
-                quantity=10,
-                buy_price=3200,
-                sector="Information Technology"
-            )
-        ]
-
-        # -------------------------
-        # Conservative Portfolio
-        # -------------------------
-
-        conservative = Portfolio(
-            name="Conservative Portfolio"
-        )
-
-        conservative.holdings = [
-            Holding(
-                symbol="ITC.NS",
-                quantity=40,
-                buy_price=450,
-                sector="Consumer Staples"
-            ),
-            Holding(
-                symbol="HDFCBANK.NS",
-                quantity=15,
-                buy_price=1600,
-                sector="Financial Services"
-            )
-        ]
-
-        db.add_all([
-            growth,
-            balanced,
-            conservative
-        ])
+        db.add(growth)
 
         db.commit()
 
-        print("Portfolio data inserted successfully.")
+        print(
+            "Demo portfolio created successfully."
+        )
 
     except Exception as e:
 
         db.rollback()
 
-        print("Error while seeding database:")
+        print(
+            "Error while seeding database:"
+        )
+
         print(e)
 
     finally:
@@ -119,4 +115,5 @@ def seed_database():
 
 
 if __name__ == "__main__":
+
     seed_database()

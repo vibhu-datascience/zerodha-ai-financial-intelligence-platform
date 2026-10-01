@@ -50,7 +50,8 @@ class FinancialIntelligenceService:
     def generate_financial_intelligence(
         self,
         portfolio_name="Growth Portfolio",
-        timeframe="1Y"
+        timeframe="1Y",
+        user_id=None
     ):
 
         # =================================================
@@ -59,7 +60,25 @@ class FinancialIntelligenceService:
 
         try:
 
-            news = self.news_service.get_news()
+            news_result = (
+                self.news_service.get_news()
+            )
+
+            if isinstance(
+                news_result,
+                list
+            ):
+
+                news = news_result
+
+            else:
+
+                news = []
+
+                print(
+                    "[FINANCIAL INTELLIGENCE] "
+                    f"Unexpected news response: {news_result}"
+                )
 
         except Exception as e:
 
@@ -76,10 +95,40 @@ class FinancialIntelligenceService:
 
         try:
 
-            sentiment = (
+            sentiment_result = (
                 self.news_service
                 .get_overall_sentiment()
             )
+
+            if isinstance(
+                sentiment_result,
+                dict
+            ):
+
+                sentiment = sentiment_result
+
+            else:
+
+                sentiment = {
+
+                    "overall_sentiment":
+                        "Unknown",
+
+                    "positive_count":
+                        0,
+
+                    "negative_count":
+                        0,
+
+                    "neutral_count":
+                        0,
+
+                    "total_articles":
+                        len(news),
+
+                    "message":
+                        "News sentiment was unavailable."
+                }
 
         except Exception as e:
 
@@ -89,33 +138,64 @@ class FinancialIntelligenceService:
             )
 
             sentiment = {
-                "overall_sentiment": "Unknown",
-                "positive_count": 0,
-                "negative_count": 0,
-                "neutral_count": 0,
-                "total_articles": 0,
-                "message": (
+
+                "overall_sentiment":
+                    "Unknown",
+
+                "positive_count":
+                    0,
+
+                "negative_count":
+                    0,
+
+                "neutral_count":
+                    0,
+
+                "total_articles":
+                    len(news),
+
+                "message":
                     "News sentiment was unavailable."
-                )
             }
 
         # =================================================
         # AGENTIC AI WORKFLOW
         # =================================================
 
-        workflow_result = (
-            run_financial_workflow_sync(
+        try:
 
-                portfolio_name=
-                    portfolio_name,
+            workflow_result = (
+                run_financial_workflow_sync(
 
-                timeframe=
-                    timeframe,
+                    portfolio_name=
+                        portfolio_name,
 
-                news_data=
-                    news
+                    timeframe=
+                        timeframe,
+
+                    user_id=
+                        user_id,
+
+                    news_data=
+                        news
+                )
             )
-        )
+
+        except TypeError:
+
+            workflow_result = (
+                run_financial_workflow_sync(
+
+                    portfolio_name=
+                        portfolio_name,
+
+                    timeframe=
+                        timeframe,
+
+                    user_id=
+                        user_id
+                )
+            )
 
         # =================================================
         # WORKFLOW OUTPUTS
@@ -266,12 +346,23 @@ class FinancialIntelligenceService:
             # CURRENT PRICE
             # ---------------------------------------------
 
-            current_price = (
-                self.market_service
-                .get_current_price(
-                    symbol
+            try:
+
+                current_price = (
+                    self.market_service
+                    .get_current_price(
+                        symbol
+                    )
                 )
-            )
+
+            except Exception as e:
+
+                print(
+                    "[FINANCIAL INTELLIGENCE] "
+                    f"Price fetch error for {symbol}: {e}"
+                )
+
+                current_price = None
 
             if current_price is None:
 
@@ -344,32 +435,46 @@ class FinancialIntelligenceService:
         # PORTFOLIO-SPECIFIC AI INSIGHT
         # =================================================
 
-        portfolio_insight = (
-            self.ai_service
-            .generate_portfolio_insight(
+        try:
 
-                portfolio_name=
-                    portfolio_name,
+            portfolio_insight = (
+                self.ai_service
+                .generate_portfolio_insight(
 
-                total_value=
-                    total_invested,
+                    portfolio_name=
+                        portfolio_name,
 
-                current_value=
-                    current_value,
+                    total_value=
+                        total_invested,
 
-                profit_loss=
-                    profit_loss,
+                    current_value=
+                        current_value,
 
-                overall_return=
-                    overall_return,
+                    profit_loss=
+                        profit_loss,
 
-                risk_level=
-                    risk_level,
+                    overall_return=
+                        overall_return,
 
-                holdings_data=
-                    holdings_data
+                    risk_level=
+                        risk_level,
+
+                    holdings_data=
+                        holdings_data
+                )
             )
-        )
+
+        except Exception as e:
+
+            print(
+                "[FINANCIAL INTELLIGENCE] "
+                f"Portfolio insight error: {e}"
+            )
+
+            portfolio_insight = (
+                "Portfolio-specific AI insight "
+                "is currently unavailable."
+            )
 
         # =================================================
         # PORTFOLIO RESPONSE
@@ -413,65 +518,133 @@ class FinancialIntelligenceService:
             "analytics":
                 analytics,
 
-            # IMPORTANT:
-            # This is now the portfolio-specific
-            # AI insight, NOT the global workflow report.
+            "holdings":
+                holdings_data,
+
             "insight":
                 portfolio_insight
         }
 
         # =================================================
-        # GLOBAL AI FINANCIAL INTELLIGENCE
+        # AI RECOMMENDATION ENGINE
         # =================================================
 
-        intelligence = (
-            workflow_result.get(
-                "final_report",
-                "Financial intelligence report "
-                "was unavailable."
+        try:
+
+            recommendation_result = (
+                self.recommendation_service
+                .generate_recommendations(
+
+                    analytics=
+                        analytics,
+
+                    portfolio_analysis={
+
+                        "portfolio_name":
+                            portfolio_name,
+
+                        "timeframe":
+                            timeframe,
+
+                        "total_value":
+                            total_invested,
+
+                        "current_value":
+                            current_value,
+
+                        "profit_loss":
+                            profit_loss,
+
+                        "overall_return":
+                            overall_return,
+
+                        "risk_level":
+                            risk_level
+                    },
+
+                    market_analysis=
+                        market
+                )
             )
-        )
 
-        # =================================================
-        # GENERATE RECOMMENDATIONS
-        # =================================================
+            # ---------------------------------------------
+            # RECOMMENDATION POLICY VALIDATION
+            # ---------------------------------------------
 
-        recommendations = (
-            self.recommendation_service
-            .generate_recommendations(
-
-                analytics=
-                    analytics,
-
-                portfolio_analysis=
-                    portfolio_response,
-
-                market_analysis=
-                    market
+            policy_result = (
+                self.recommendation_policy
+                .validate_recommendations(
+                    recommendation_result
+                )
             )
-        )
 
-        # =================================================
-        # VALIDATE RECOMMENDATIONS
-        # =================================================
-
-        recommendation_validation = (
-            self.recommendation_policy
-            .validate_recommendations(
-                recommendations
+            recommendations = (
+                policy_result.get(
+                    "valid_cards",
+                    []
+                )
             )
-        )
 
-        # =================================================
-        # ONLY APPROVED CARDS
-        # =================================================
+            recommendation_policy = {
 
-        approved_recommendations = (
-            recommendation_validation.get(
-                "valid_cards",
-                []
+                "status":
+                    policy_result.get(
+                        "status",
+                        "unknown"
+                    ),
+
+                "total_cards":
+                    policy_result.get(
+                        "total_cards",
+                        0
+                    ),
+
+                "approved_cards":
+                    policy_result.get(
+                        "approved_cards",
+                        0
+                    ),
+
+                "blocked_count":
+                    policy_result.get(
+                        "blocked_count",
+                        0
+                    ),
+
+                "errors":
+                    policy_result.get(
+                        "errors",
+                        []
+                    )
+            }
+
+        except Exception as e:
+
+            print(
+                "[FINANCIAL INTELLIGENCE] "
+                f"Recommendation error: {e}"
             )
-        )
+
+            recommendations = []
+
+            recommendation_policy = {
+
+                "status":
+                    "failed",
+
+                "total_cards":
+                    0,
+
+                "approved_cards":
+                    0,
+
+                "blocked_count":
+                    0,
+
+                "errors": [
+                    str(e)
+                ]
+            }
 
         # =================================================
         # FINAL RESPONSE
@@ -479,29 +652,11 @@ class FinancialIntelligenceService:
 
         return {
 
-            "portfolio_name":
-                portfolio_name,
-
-            "timeframe":
-                timeframe,
-
-            # ---------------------------------------------
-            # MARKET
-            # ---------------------------------------------
-
-            "market":
-                market,
-
-            # ---------------------------------------------
-            # PORTFOLIO
-            # ---------------------------------------------
-
             "portfolio":
                 portfolio_response,
 
-            # ---------------------------------------------
-            # NEWS
-            # ---------------------------------------------
+            "market":
+                market,
 
             "news":
                 news,
@@ -509,75 +664,18 @@ class FinancialIntelligenceService:
             "sentiment":
                 sentiment,
 
-            # ---------------------------------------------
-            # GLOBAL AI FINANCIAL INTELLIGENCE
-            # ---------------------------------------------
-
             "financial_intelligence":
-                intelligence,
-
-            # ---------------------------------------------
-            # RECOMMENDATIONS
-            # ---------------------------------------------
+                workflow_result.get(
+                    "final_report",
+                    workflow_result.get(
+                        "final_answer",
+                        ""
+                    )
+                ),
 
             "recommendations":
-                approved_recommendations,
-
-            # ---------------------------------------------
-            # RECOMMENDATION POLICY
-            # ---------------------------------------------
+                recommendations,
 
             "recommendation_policy":
-                {
-
-                    "status":
-                        recommendation_validation.get(
-                            "status",
-                            "unknown"
-                        ),
-
-                    "total_cards":
-                        recommendation_validation.get(
-                            "total_cards",
-                            0
-                        ),
-
-                    "approved_cards":
-                        recommendation_validation.get(
-                            "approved_cards",
-                            0
-                        ),
-
-                    "blocked_count":
-                        recommendation_validation.get(
-                            "blocked_count",
-                            0
-                        ),
-
-                    "errors":
-                        recommendation_validation.get(
-                            "errors",
-                            []
-                        )
-                },
-
-            # ---------------------------------------------
-            # WORKFLOW OBSERVABILITY
-            # ---------------------------------------------
-
-            "workflow":
-                {
-
-                    "status":
-                        workflow_result.get(
-                            "validation_status",
-                            "unknown"
-                        ),
-
-                    "validation_errors":
-                        workflow_result.get(
-                            "validation_errors",
-                            []
-                        )
-                }
+                recommendation_policy
         }

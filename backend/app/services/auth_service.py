@@ -45,6 +45,7 @@ class AuthService:
 
     def create_access_token(
         self,
+        user_id: int,
         username: str
     ) -> str:
 
@@ -57,6 +58,7 @@ class AuthService:
 
         payload = {
             "sub": username,
+            "user_id": user_id,
             "exp": expire
         }
 
@@ -80,11 +82,15 @@ class AuthService:
             )
 
             username = payload.get("sub")
+            user_id = payload.get("user_id")
 
-            if not username:
+            if not username or not user_id:
                 return None
 
-            return username
+            return {
+                "user_id": user_id,
+                "username": username
+            }
 
         except Exception:
 

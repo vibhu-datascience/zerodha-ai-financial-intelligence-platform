@@ -9,27 +9,46 @@ from mcp import Client
 from app.services.ai_service import AIService
 
 
+# =========================================================
+# MCP CONFIGURATION
+# =========================================================
+
 MCP_SERVER_URL = os.getenv(
     "MCP_SERVER_URL",
     "http://127.0.0.1:8100/mcp"
 )
 
 
+# =========================================================
+# WORKFLOW STATE
+# =========================================================
+
 class FinancialWorkflowState(TypedDict, total=False):
 
     portfolio_name: str
     timeframe: str
 
+    # Multi-user support
+    user_id: int
+
+    # AI Copilot question
+    user_question: str
+
+    # MCP data
     portfolio_data: dict[str, Any]
     analytics_data: dict[str, Any]
     market_data: dict[str, Any]
     news_data: list[dict[str, Any]]
 
+    # Grounded context
     grounded_context: dict[str, Any]
 
+    # AI output
     ai_report: str
     final_report: str
+    final_answer: str
 
+    # Validation
     validation_status: str
     validation_errors: list[str]
 
@@ -38,14 +57,16 @@ class FinancialWorkflowState(TypedDict, total=False):
 # SAFE HELPERS
 # =========================================================
 
-def _number(value):
+def _number(value: Any) -> float:
+
     try:
         return float(value)
+
     except (TypeError, ValueError):
         return 0.0
 
 
-def _safe_dict(value):
+def _safe_dict(value: Any) -> dict:
 
     if isinstance(value, dict):
         return value
@@ -53,7 +74,7 @@ def _safe_dict(value):
     return {}
 
 
-def _safe_list(value):
+def _safe_list(value: Any) -> list:
 
     if isinstance(value, list):
         return value
@@ -67,8 +88,8 @@ def _safe_list(value):
 
 async def _call_mcp_tool(
     client,
-    tool_name,
-    arguments
+    tool_name: str,
+    arguments: dict
 ):
 
     result = await client.call_tool(
@@ -76,14 +97,25 @@ async def _call_mcp_tool(
         arguments
     )
 
+    # -----------------------------------------------------
+    # Structured MCP response
+    # -----------------------------------------------------
+
     structured = getattr(
         result,
         "structured_content",
         None
     )
 
-    if isinstance(structured, dict):
+    if isinstance(
+        structured,
+        dict
+    ):
         return structured
+
+    # -----------------------------------------------------
+    # Text MCP response
+    # -----------------------------------------------------
 
     content = getattr(
         result,
@@ -91,7 +123,10 @@ async def _call_mcp_tool(
         None
     )
 
-    if isinstance(content, list):
+    if isinstance(
+        content,
+        list
+    ):
 
         for item in content:
 
@@ -106,9 +141,14 @@ async def _call_mcp_tool(
 
             try:
 
-                parsed = json.loads(text)
+                parsed = json.loads(
+                    text
+                )
 
-                if isinstance(parsed, dict):
+                if isinstance(
+                    parsed,
+                    dict
+                ):
                     return parsed
 
             except Exception:
@@ -130,6 +170,19 @@ async def fetch_portfolio(
         "Growth Portfolio"
     )
 
+    user_id = state.get(
+        "user_id"
+    )
+
+    arguments = {
+        "portfolio_name": portfolio_name
+    }
+
+    # Multi-user portfolio isolation
+    if user_id is not None:
+
+        arguments["user_id"] = user_id
+
     async with Client(
         MCP_SERVER_URL
     ) as client:
@@ -137,9 +190,7 @@ async def fetch_portfolio(
         result = await _call_mcp_tool(
             client,
             "get_portfolio",
-            {
-                "portfolio_name": portfolio_name
-            }
+            arguments
         )
 
     return {
@@ -148,7 +199,7 @@ async def fetch_portfolio(
 
 
 # =========================================================
-# RUN ANALYTICS
+# RUN PORTFOLIO ANALYTICS
 # =========================================================
 
 async def run_analytics(
@@ -160,6 +211,19 @@ async def run_analytics(
         "Growth Portfolio"
     )
 
+    user_id = state.get(
+        "user_id"
+    )
+
+    arguments = {
+        "portfolio_name": portfolio_name
+    }
+
+    # Multi-user portfolio isolation
+    if user_id is not None:
+
+        arguments["user_id"] = user_id
+
     async with Client(
         MCP_SERVER_URL
     ) as client:
@@ -167,9 +231,7 @@ async def run_analytics(
         result = await _call_mcp_tool(
             client,
             "run_portfolio_analytics",
-            {
-                "portfolio_name": portfolio_name
-            }
+            arguments
         )
 
     return {
@@ -238,89 +300,338 @@ def build_grounded_context(
         )
     )
 
-    # -----------------------------------------------------
-    # Build a complete portfolio analysis object.
+    portfolio_name = state.get(
+        "portfolio_name",
+        "Portfolio"
+    )
+
+    user_question = state.get(
+        "user_question",
+        ""
+    )
+
+    # =====================================================
+    # BASIC PORTFOLIO VALUES
+    # =====================================================
+
+    raw_total_invested = _number(
+        portfolio_data.get(
+            "total_invested",
+            0
+        )
+    )
+
+    current_value = _number(
+        analytics_data.get(
+            "current_value",
+            0
+        )
+    )
+
+    profit_loss = _number(
+        analytics_data.get(
+            "profit_loss",
+            0
+        )
+    )
+
+    # =====================================================
+    # IMPORTANT FALLBACK
     #
-    # The analytics MCP tool returns:
-    # current_value, profit_loss and analytics.
+    # If MCP portfolio data does not provide invested value,
+    # reconstruct it from:
     #
-    # It does NOT return an "analysis" key.
-    # -----------------------------------------------------
+    # Current Value - Profit/Loss
+    #
+    # Example:
+    #
+    # 59157.50 - (-45342.50)
+    # = 104500.00
+    # =====================================================
 
-    portfolio_analysis = {
-        "portfolio_name": portfolio_data.get(
-            "portfolio_name",
-            state.get(
-                "portfolio_name",
-                "Portfolio"
+    if raw_total_invested <= 0:
+
+        reconstructed_invested = (
+            current_value
+            - profit_loss
+        )
+
+        if reconstructed_invested > 0:
+
+            total_invested = (
+                reconstructed_invested
             )
-        ),
 
-        "total_value": _number(
-            portfolio_data.get(
-                "total_invested",
-                0
+        else:
+
+            total_invested = 0.0
+
+    else:
+
+        total_invested = (
+            raw_total_invested
+        )
+
+    # =====================================================
+    # ANALYTICS OBJECT
+    # =====================================================
+
+    analytics = _safe_dict(
+        analytics_data.get(
+            "analytics",
+            {}
+        )
+    )
+
+    # =====================================================
+    # HOLDING CONTRIBUTION
+    #
+    # This contains deterministic holding-level P/L.
+    # =====================================================
+
+    holding_contribution = _safe_list(
+        analytics.get(
+            "holding_contribution",
+            []
+        )
+    )
+
+    contribution_map = {}
+
+    for item in holding_contribution:
+
+        if not isinstance(
+            item,
+            dict
+        ):
+            continue
+
+        symbol = str(
+            item.get(
+                "symbol",
+                ""
             )
-        ),
+        ).strip()
 
-        "current_value": _number(
-            analytics_data.get(
-                "current_value",
-                0
-            )
-        ),
+        if not symbol:
+            continue
 
-        "profit_loss": _number(
-            analytics_data.get(
+        contribution_map[
+            symbol
+        ] = _number(
+            item.get(
                 "profit_loss",
                 0
             )
-        ),
+        )
 
-        "holdings": _safe_list(
-            portfolio_data.get(
-                "holdings",
-                []
+    # =====================================================
+    # RAW HOLDINGS
+    # =====================================================
+
+    raw_holdings = _safe_list(
+        portfolio_data.get(
+            "holdings",
+            []
+        )
+    )
+
+    # =====================================================
+    # ENRICH HOLDINGS
+    #
+    # MCP get_portfolio() gives invested_value.
+    # Analytics gives holding-level profit/loss.
+    #
+    # Therefore:
+    #
+    # current_value =
+    # invested_value + profit_loss
+    # =====================================================
+
+    enriched_holdings = []
+
+    for holding in raw_holdings:
+
+        if not isinstance(
+            holding,
+            dict
+        ):
+            continue
+
+        symbol = str(
+            holding.get(
+                "symbol",
+                ""
             )
-        ),
+        ).strip()
 
-        "analytics": _safe_dict(
-            analytics_data.get(
-                "analytics",
-                {}
+        invested_value = _number(
+            holding.get(
+                "invested_value",
+                0
             )
         )
-    }
 
-    # -----------------------------------------------------
-    # Calculate overall return
-    # -----------------------------------------------------
+        holding_profit_loss = (
+            contribution_map.get(
+                symbol,
+                0.0
+            )
+        )
 
-    total_value = portfolio_analysis[
-        "total_value"
-    ]
+        holding_current_value = (
+            invested_value
+            +
+            holding_profit_loss
+        )
 
-    profit_loss = portfolio_analysis[
-        "profit_loss"
-    ]
+        enriched_holding = dict(
+            holding
+        )
 
-    if total_value > 0:
+        enriched_holding[
+            "invested_value"
+        ] = round(
+            invested_value,
+            2
+        )
+
+        enriched_holding[
+            "profit_loss"
+        ] = round(
+            holding_profit_loss,
+            2
+        )
+
+        enriched_holding[
+            "current_value"
+        ] = round(
+            holding_current_value,
+            2
+        )
+
+        # -------------------------------------------------
+        # Current price
+        # -------------------------------------------------
+
+        quantity = _number(
+            holding.get(
+                "quantity",
+                0
+            )
+        )
+
+        if quantity > 0:
+
+            current_price = (
+                holding_current_value
+                /
+                quantity
+            )
+
+        else:
+
+            current_price = _number(
+                holding.get(
+                    "buy_price",
+                    0
+                )
+            )
+
+        enriched_holding[
+            "current_price"
+        ] = round(
+            current_price,
+            2
+        )
+
+        enriched_holdings.append(
+            enriched_holding
+        )
+
+    # =====================================================
+    # OVERALL RETURN
+    # =====================================================
+
+    if total_invested > 0:
 
         return_percentage = (
             profit_loss
-            / total_value
-            * 100
+            /
+            total_invested
+            *
+            100
         )
 
     else:
 
         return_percentage = 0.0
 
-    portfolio_analysis[
-        "overall_return"
-    ] = f"{return_percentage:+.2f}%"
+    # =====================================================
+    # PORTFOLIO ANALYSIS OBJECT
+    # =====================================================
+
+    portfolio_analysis = {
+
+        "portfolio_name":
+            portfolio_data.get(
+                "portfolio_name",
+                portfolio_name
+            ),
+
+        "total_value":
+            round(
+                total_invested,
+                2
+            ),
+
+        "total_invested":
+            round(
+                total_invested,
+                2
+            ),
+
+        "current_value":
+            round(
+                current_value,
+                2
+            ),
+
+        "profit_loss":
+            round(
+                profit_loss,
+                2
+            ),
+
+        "overall_return":
+            f"{return_percentage:+.2f}%",
+
+        "risk_level":
+            analytics.get(
+                "risk_level",
+                "Unknown"
+            ),
+
+        "holdings":
+            enriched_holdings,
+
+        "analytics":
+            analytics
+    }
+
+    # =====================================================
+    # GROUNDED CONTEXT
+    # =====================================================
 
     context = {
+
+        "user_id":
+            state.get(
+                "user_id"
+            ),
+
+        "user_question":
+            user_question,
 
         "portfolio":
             portfolio_data,
@@ -339,8 +650,7 @@ def build_grounded_context(
     }
 
     return {
-        "grounded_context":
-            context
+        "grounded_context": context
     }
 
 
@@ -380,6 +690,29 @@ def generate_ai_report(
         )
     )
 
+    user_question = state.get(
+        "user_question",
+        ""
+    )
+
+    # =====================================================
+    # COPILOT QUESTION
+    # =====================================================
+
+    if user_question:
+
+        portfolio_analysis = dict(
+            portfolio_analysis
+        )
+
+        portfolio_analysis[
+            "user_question"
+        ] = user_question
+
+    # =====================================================
+    # AI SERVICE
+    # =====================================================
+
     ai_service = AIService()
 
     report = (
@@ -400,7 +733,11 @@ def generate_ai_report(
     )
 
     return {
+
         "ai_report":
+            report,
+
+        "final_answer":
             report
     }
 
@@ -460,7 +797,11 @@ def build_safe_fallback_report(
         "Portfolio"
     )
 
-    invested = _number(
+    # =====================================================
+    # INVESTED VALUE
+    # =====================================================
+
+    raw_invested = _number(
         portfolio_data.get(
             "total_invested",
             0
@@ -481,17 +822,44 @@ def build_safe_fallback_report(
         )
     )
 
+    if raw_invested > 0:
+
+        invested = raw_invested
+
+    else:
+
+        reconstructed_invested = (
+            current_value
+            - profit_loss
+        )
+
+        invested = (
+            reconstructed_invested
+            if reconstructed_invested > 0
+            else 0.0
+        )
+
+    # =====================================================
+    # RETURN
+    # =====================================================
+
     if invested > 0:
 
         overall_return = (
             profit_loss
-            / invested
-            * 100
+            /
+            invested
+            *
+            100
         )
 
     else:
 
         overall_return = 0.0
+
+    # =====================================================
+    # OTHER ANALYTICS
+    # =====================================================
 
     risk_level = analytics.get(
         "risk_level",
@@ -545,41 +913,46 @@ def build_safe_fallback_report(
         )
     )
 
-    news_count = len(
-        news_data
+    # =====================================================
+    # HOLDING CONTRIBUTION
+    # =====================================================
+
+    holding_contribution = _safe_list(
+        analytics.get(
+            "holding_contribution",
+            []
+        )
     )
 
-    positive_news = 0
-    negative_news = 0
-    neutral_news = 0
+    contribution_map = {}
 
-    for article in news_data:
+    for item in holding_contribution:
 
         if not isinstance(
-            article,
+            item,
             dict
         ):
             continue
 
-        sentiment = str(
-            article.get(
-                "sentiment",
-                "Neutral"
+        symbol = str(
+            item.get(
+                "symbol",
+                ""
             )
-        ).lower()
+        ).strip()
 
-        if sentiment == "positive":
-            positive_news += 1
+        contribution_map[
+            symbol
+        ] = _number(
+            item.get(
+                "profit_loss",
+                0
+            )
+        )
 
-        elif sentiment == "negative":
-            negative_news += 1
-
-        else:
-            neutral_news += 1
-
-    # -----------------------------------------------------
+    # =====================================================
     # HOLDING SUMMARY
-    # -----------------------------------------------------
+    # =====================================================
 
     holding_lines = []
 
@@ -603,16 +976,17 @@ def build_safe_fallback_report(
             )
         )
 
-        holding_current_value = _number(
-            holding.get(
-                "current_value",
-                0
+        holding_profit_loss = (
+            contribution_map.get(
+                str(symbol),
+                0.0
             )
         )
 
-        holding_profit_loss = (
-            holding_current_value
-            - invested_value
+        holding_current_value = (
+            invested_value
+            +
+            holding_profit_loss
         )
 
         status = (
@@ -642,9 +1016,44 @@ def build_safe_fallback_report(
         holding_lines
     )
 
-    # -----------------------------------------------------
+    # =====================================================
     # NEWS SENTIMENT
-    # -----------------------------------------------------
+    # =====================================================
+
+    news_count = len(
+        news_data
+    )
+
+    positive_news = 0
+    negative_news = 0
+    neutral_news = 0
+
+    for article in news_data:
+
+        if not isinstance(
+            article,
+            dict
+        ):
+            continue
+
+        sentiment = str(
+            article.get(
+                "sentiment",
+                "Neutral"
+            )
+        ).lower()
+
+        if sentiment == "positive":
+
+            positive_news += 1
+
+        elif sentiment == "negative":
+
+            negative_news += 1
+
+        else:
+
+            neutral_news += 1
 
     if positive_news > negative_news:
 
@@ -658,9 +1067,9 @@ def build_safe_fallback_report(
 
         news_sentiment = "Neutral"
 
-    # -----------------------------------------------------
+    # =====================================================
     # SAFE REPORT
-    # -----------------------------------------------------
+    # =====================================================
 
     return f"""
 Financial Intelligence Report
@@ -721,6 +1130,158 @@ def validate_ai_report(
 
     errors = []
 
+    user_question = str(
+        state.get(
+            "user_question",
+            ""
+        )
+    ).strip()
+
+    # =====================================================
+    # COPILOT VALIDATION
+    # =====================================================
+
+    if user_question:
+
+        if not normalized:
+
+            errors.append(
+                "AI Copilot returned an empty response."
+            )
+
+        # -------------------------------------------------
+        # DIRECT INVESTMENT ADVICE
+        # -------------------------------------------------
+
+        direct_advice_patterns = [
+
+            "buy this stock",
+            "buy the stock",
+            "you should buy",
+            "recommend buying",
+            "recommended to buy",
+
+            "sell this stock",
+            "sell the stock",
+            "you should sell",
+            "recommend selling",
+            "recommended to sell",
+
+            "strong buy",
+            "strong sell",
+
+            "invest in this stock",
+            "invest in this share",
+
+            "purchase this stock",
+            "purchase this share"
+        ]
+
+        for phrase in direct_advice_patterns:
+
+            if phrase in normalized.lower():
+
+                errors.append(
+                    "Direct investment advice detected: "
+                    f"'{phrase}'"
+                )
+
+        # -------------------------------------------------
+        # MARKET / PORTFOLIO RELATIONSHIP
+        # -------------------------------------------------
+
+        forbidden_relationships = [
+
+            "market caused the portfolio",
+            "market movements caused the portfolio",
+            "market conditions caused the portfolio",
+            "portfolio declined because of the market",
+            "portfolio increased because of the market",
+            "portfolio performance was driven by market movements",
+            "portfolio is sensitive to market movements",
+            "portfolio was sensitive to market movements",
+            "portfolio shows sensitivity to market movements",
+            "portfolio has sensitivity to market movements",
+            "market movements drove portfolio performance",
+            "market movements drove the portfolio",
+            "market conditions drove portfolio performance"
+        ]
+
+        for phrase in forbidden_relationships:
+
+            if phrase in normalized.lower():
+
+                errors.append(
+                    "Unsupported market / portfolio "
+                    "relationship detected: "
+                    f"'{phrase}'"
+                )
+
+        # -------------------------------------------------
+        # CORRELATION
+        # -------------------------------------------------
+
+        correlation_patterns = [
+
+            "portfolio is correlated with the market",
+            "portfolio is highly correlated with the market",
+            "portfolio has a strong correlation with the market",
+            "portfolio has a positive correlation with the market",
+            "portfolio has a negative correlation with the market",
+            "portfolio correlates with the market"
+        ]
+
+        for phrase in correlation_patterns:
+
+            if phrase in normalized.lower():
+
+                errors.append(
+                    "Unsupported correlation claim detected: "
+                    f"'{phrase}'"
+                )
+
+        # -------------------------------------------------
+        # UNSUPPORTED CERTAINTY
+        # -------------------------------------------------
+
+        unsupported_certainty = [
+
+            "guaranteed profit",
+            "guaranteed return",
+            "risk-free return",
+            "risk free return",
+            "certain profit",
+            "will definitely increase",
+            "will definitely rise",
+            "will definitely fall",
+            "will definitely decline"
+        ]
+
+        for phrase in unsupported_certainty:
+
+            if phrase in normalized.lower():
+
+                errors.append(
+                    "Unsupported certainty detected: "
+                    f"'{phrase}'"
+                )
+
+        if errors:
+
+            return {
+                "validation_status": "failed",
+                "validation_errors": errors
+            }
+
+        return {
+            "validation_status": "passed",
+            "validation_errors": []
+        }
+
+    # =====================================================
+    # NORMAL FINANCIAL REPORT VALIDATION
+    # =====================================================
+
     required_sections = [
 
         "1. Current Market Condition",
@@ -780,7 +1341,7 @@ def validate_ai_report(
             )
 
     # -----------------------------------------------------
-    # UNSUPPORTED MARKET / PORTFOLIO RELATIONSHIP
+    # MARKET / PORTFOLIO RELATIONSHIP
     # -----------------------------------------------------
 
     forbidden_relationships = [
@@ -814,7 +1375,7 @@ def validate_ai_report(
             )
 
     # -----------------------------------------------------
-    # CORRELATION CLAIMS
+    # CORRELATION
     # -----------------------------------------------------
 
     correlation_patterns = [
@@ -887,9 +1448,18 @@ def validate_report_node(
         state
     )
 
+    # =====================================================
+    # VALIDATION PASSED
+    # =====================================================
+
     if validation[
         "validation_status"
     ] == "passed":
+
+        final_report = state.get(
+            "ai_report",
+            ""
+        )
 
         return {
 
@@ -900,15 +1470,47 @@ def validate_report_node(
                 [],
 
             "final_report":
+                final_report,
+
+            "final_answer":
+                final_report
+        }
+
+    # =====================================================
+    # COPILOT VALIDATION FAILED
+    # =====================================================
+
+    if state.get(
+        "user_question",
+        ""
+    ).strip():
+
+        return {
+
+            "validation_status":
+                "failed",
+
+            "validation_errors":
+                validation[
+                    "validation_errors"
+                ],
+
+            "final_report":
+                state.get(
+                    "ai_report",
+                    ""
+                ),
+
+            "final_answer":
                 state.get(
                     "ai_report",
                     ""
                 )
         }
 
-    # -----------------------------------------------------
-    # AI REPORT FAILED
-    # -----------------------------------------------------
+    # =====================================================
+    # NORMAL REPORT FALLBACK
+    # =====================================================
 
     fallback_report = (
         build_safe_fallback_report(
@@ -943,6 +1545,9 @@ def validate_report_node(
                 [],
 
             "final_report":
+                fallback_report,
+
+            "final_answer":
                 fallback_report
         }
 
@@ -963,6 +1568,9 @@ def validate_report_node(
             ),
 
         "final_report":
+            fallback_report,
+
+        "final_answer":
             fallback_report
     }
 
@@ -1052,7 +1660,9 @@ def build_workflow():
 async def run_financial_workflow(
     portfolio_name="Growth Portfolio",
     timeframe="1Y",
-    news_data=None
+    news_data=None,
+    user_id=None,
+    user_question=None
 ):
 
     graph = build_workflow()
@@ -1064,6 +1674,12 @@ async def run_financial_workflow(
 
         "timeframe":
             timeframe,
+
+        "user_id":
+            user_id,
+
+        "user_question":
+            user_question or "",
 
         "news_data":
             news_data or [],
@@ -1084,6 +1700,9 @@ async def run_financial_workflow(
             "",
 
         "final_report":
+            "",
+
+        "final_answer":
             "",
 
         "validation_status":
@@ -1107,7 +1726,9 @@ async def run_financial_workflow(
 def run_financial_workflow_sync(
     portfolio_name="Growth Portfolio",
     timeframe="1Y",
-    news_data=None
+    news_data=None,
+    user_id=None,
+    user_question=None
 ):
 
     return asyncio.run(
@@ -1119,6 +1740,12 @@ def run_financial_workflow_sync(
                 timeframe,
 
             news_data=
-                news_data
+                news_data,
+
+            user_id=
+                user_id,
+
+            user_question=
+                user_question
         )
     )

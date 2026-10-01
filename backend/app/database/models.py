@@ -1,4 +1,11 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Float,
+    ForeignKey,
+    UniqueConstraint
+)
 from sqlalchemy.orm import relationship
 
 from app.database.database import Base
@@ -26,10 +33,24 @@ class User(Base):
         nullable=False
     )
 
+    portfolios = relationship(
+        "Portfolio",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
 
 class Portfolio(Base):
 
     __tablename__ = "portfolios"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "name",
+            name="uq_portfolio_user_name"
+        ),
+    )
 
     id = Column(
         Integer,
@@ -37,10 +58,20 @@ class Portfolio(Base):
         index=True
     )
 
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False
+    )
+
     name = Column(
         String,
-        unique=True,
         nullable=False
+    )
+
+    user = relationship(
+        "User",
+        back_populates="portfolios"
     )
 
     holdings = relationship(
