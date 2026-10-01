@@ -9,7 +9,7 @@ An AI-powered full-stack financial intelligence platform that combines portfolio
 ## Live Deployment
 
 ### Frontend
-https://zerodha-ai-financial-intelligence-p.vercel.app
+https://zerodha-ai-financial-intelligence-platform-wr21f8hdo-vibhu15.vercel.app
 
 ### Backend API
 https://zerodha-ai-financial-intelligence-net0.onrender.com
