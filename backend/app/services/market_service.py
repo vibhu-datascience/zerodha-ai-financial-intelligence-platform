@@ -75,35 +75,50 @@ class MarketService:
 
     def get_current_price(self, symbol):
 
-        try:
+        max_attempts = 3
 
-            ticker = yf.Ticker(symbol)
+        for attempt in range(1, max_attempts + 1):
 
-            data = ticker.history(
-                period="5d"
-            )
+            try:
 
-            if data.empty:
+                ticker = yf.Ticker(symbol)
 
-                return None
+                data = ticker.history(
+                    period="5d",
+                    timeout=15
+                )
 
-            current_price = (
-                data["Close"].iloc[-1]
-            )
+                if data.empty:
 
-            return round(
-                float(current_price),
-                2
-            )
+                    print(
+                        f"Attempt {attempt}/{max_attempts}: "
+                        f"No price data returned for {symbol}"
+                    )
 
-        except Exception as e:
+                else:
 
-            print(
-                f"Error fetching price for "
-                f"{symbol}: {e}"
-            )
+                    current_price = (
+                        data["Close"].iloc[-1]
+                    )
 
-            return None
+                    return round(
+                        float(current_price),
+                        2
+                    )
+
+            except Exception as e:
+
+                print(
+                    f"Attempt {attempt}/{max_attempts}: "
+                    f"Error fetching price for {symbol}: {e}"
+                )
+
+        print(
+            f"Unable to fetch current price for {symbol} "
+            f"after {max_attempts} attempts."
+        )
+
+        return None
 
     # =====================================================
     # CURRENT + PREVIOUS CLOSE
